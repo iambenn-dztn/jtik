@@ -1,0 +1,6 @@
+
+{
+  "name": "JTik - Chuyển Hóa Liên Kết",
+  "description": "Biến các URL phức tạp thành các liên kết thông minh, gọn gàng bằng phân tích AI Gemini. Nhận tóm tắt, thẻ và định danh ngữ nghĩa chỉ trong nháy mắt.",
+  "requestFramePermissions": []
+}
