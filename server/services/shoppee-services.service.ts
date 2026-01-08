@@ -15,7 +15,7 @@ export const refreshCookie = async () => {
   const SHOPEE_USER = firstAccount.username;
   const SHOPEE_PASS = firstAccount.password;
   const browser = await chromium.launch({
-    headless: false, // 👁️ HIỆN UI
+    headless: true, // 👁️ HIỆN UI
     slowMo: 50, // 🐢 chạy chậm để nhìn rõ
     devtools: true, // 🔧 mở DevTools
     args: ["--disable-blink-features=AutomationControlled"],
