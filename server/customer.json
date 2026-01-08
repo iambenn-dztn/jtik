@@ -1,0 +1,92 @@
+{
+  "customers": [
+    {
+      "phone": "12312",
+      "bankName": "12312",
+      "accountNumber": "312321",
+      "accountName": "213123",
+      "orderId": "12312",
+      "id": "7493d03e-914f-4e32-a4d4-566dc14afb16",
+      "createdAt": "2026-01-07T17:20:47.261Z",
+      "updatedAt": "2026-01-08T17:20:04.665Z",
+      "status": "deleted"
+    },
+    {
+      "phone": "0901234567",
+      "bankName": "Vietcombank",
+      "accountNumber": "1234567890",
+      "accountName": "NGUYEN VAN A",
+      "orderId": "TEST-SUCCESS",
+      "id": "ee6c58e6-dd79-46d6-814c-34c9ba4f9441",
+      "createdAt": "2026-01-07T17:19:43.800Z",
+      "updatedAt": "2026-01-08T17:20:07.568Z",
+      "status": "deleted"
+    },
+    {
+      "phone": "312312",
+      "bankName": "12321",
+      "accountNumber": "123123",
+      "accountName": "123213",
+      "orderId": "12312",
+      "id": "b4949234-7753-422e-b605-bc69764307da",
+      "createdAt": "2026-01-07T17:14:22.904Z",
+      "updatedAt": "2026-01-07T17:14:22.904Z",
+      "status": "active"
+    },
+    {
+      "phone": "23423",
+      "bankName": "23423",
+      "accountNumber": "23432",
+      "accountName": "23423432",
+      "orderId": "234",
+      "id": "f75922ce-4788-46dd-8de4-966950208b7d",
+      "createdAt": "2026-01-07T17:04:59.999Z",
+      "updatedAt": "2026-01-07T17:04:59.999Z",
+      "status": "active"
+    },
+    {
+      "phone": "555-0000",
+      "bankName": "Test Bank",
+      "accountNumber": "12345",
+      "accountName": "Test User",
+      "orderId": "TEST-UUID",
+      "id": "2f965930-e9fd-473f-b09c-3fc5dd3d195e",
+      "createdAt": "2026-01-07T17:02:53.325Z",
+      "updatedAt": "2026-01-07T17:03:00.763Z",
+      "status": "deleted"
+    },
+    {
+      "phone": "12312",
+      "bankName": "21321",
+      "accountNumber": "12321",
+      "accountName": "1231232",
+      "orderId": "12321",
+      "id": 3,
+      "createdAt": "2026-01-07T16:32:33.103Z",
+      "updatedAt": "2026-01-07T16:55:05.506Z",
+      "status": "paid"
+    },
+    {
+      "phone": "12312",
+      "bankName": "123123",
+      "accountNumber": "12321",
+      "accountName": "12321321",
+      "orderId": "12321",
+      "id": 2,
+      "createdAt": "2026-01-07T16:07:50.033Z",
+      "updatedAt": "2026-01-07T16:49:05.123Z",
+      "status": "deleted"
+    },
+    {
+      "phone": "111",
+      "bankName": "111",
+      "accountNumber": "111",
+      "accountName": "111",
+      "orderId": "11",
+      "id": 1,
+      "createdAt": "2026-01-07T16:07:26.348Z",
+      "updatedAt": "2026-01-07T16:54:59.065Z",
+      "status": "deleted"
+    }
+  ]
+}

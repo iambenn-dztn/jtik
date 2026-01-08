@@ -3,14 +3,22 @@ import {
   Wand2,
   Link as LinkIcon,
   Loader2,
-  Copy,
+  ShoppingCart,
   Check,
   Sparkles,
   X,
   Share2,
   Phone,
   CreditCard,
+  RefreshCw,
+  Package,
+  Building2,
+  User,
+  Database,
+  Download,
+  Eye,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 
 import { transformLink, saveInfo } from "./services/shoppeService";
 
@@ -19,7 +27,6 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
 
   // Form state
   const [phone, setPhone] = useState("");
@@ -29,6 +36,7 @@ function App() {
   const [showModal, setShowModal] = useState(false);
   const [orderId, setOrderId] = useState("");
   const [showSnackbar, setShowSnackbar] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const handleProcessLink = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,13 +70,7 @@ function App() {
 
     const shopeeLink = result;
 
-    // Try to open in Shopee app (works on mobile)
     window.location.href = shopeeLink;
-
-    // window.open(result);
-    // navigator.clipboard.writeText(result);
-    // setCopied(true);
-    // setTimeout(() => setCopied(false), 500);
   };
 
   const handleBankInfoSubmit = async (e: React.FormEvent) => {
@@ -84,10 +86,6 @@ function App() {
 
     const res = await saveInfo(formData);
 
-    // Show success snackbar
-    setShowSnackbar(true);
-    setTimeout(() => setShowSnackbar(false), 3000);
-
     // Reset form
     setPhone("");
     setBankName("");
@@ -96,10 +94,13 @@ function App() {
     setOrderId("");
 
     setShowModal(false);
+
+    // Show success modal
+    setShowSuccessModal(true);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#fff5eb] via-[#ffe8d1] to-[#ffd4a8] text-gray-900 selection:bg-orange-500/30">
+    <div className="min-h-screen bg-gradient-to-br from-[#fcedde] via-[#ffe8d1] to-[#ffd4a8] text-gray-900 selection:bg-orange-500/30">
       <div className="flex items-center pt-8 pl-8">
         <img
           src="/assets/logo.png"
@@ -108,17 +109,12 @@ function App() {
         />
       </div>
       <div className="fixed top-0 left-0 w-full z-50 px-8 py-6 flex justify-end items-center">
-        <div className="flex items-center gap-8 text-sm font-semibold text-zinc-400">
-          {/* <a href="#" className="hover:text-orange-400 transition-all">
-            Sản phẩm
-          </a>
-          <a href="#" className="hover:text-orange-400 transition-all">
-            Blog
-          </a> */}
+        <div className="flex items-center gap-4 text-sm font-semibold text-zinc-400">
           <button
             onClick={() => setShowModal(true)}
-            className="px-5 py-2.5 rounded-xl border border-orange-500/30 text-orange-400 hover:bg-orange-500/10 transition-all"
+            className="px-6 py-3 rounded-xl bg-gradient-to-r from-orange-500 to-red-500 text-white font-bold hover:from-orange-600 hover:to-red-600 transition-all flex items-center gap-2 shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 active:scale-95"
           >
+            <RefreshCw size={16} />
             Hoàn tiền
           </button>
         </div>
@@ -211,8 +207,8 @@ function App() {
                       onClick={handleCopy}
                       className="whitespace-nowrap bg-blue-500 hover:bg-blue-400 text-white px-6 py-3 rounded-xl flex items-center gap-2 font-bold transition-all w-full sm:w-auto justify-center"
                     >
-                      {copied ? <Check size={18} /> : <Copy size={18} />}
-                      {copied ? "Đã Chép!" : "Sao Chép"}
+                      <ShoppingCart size={18} />
+                      Mua Ngay
                     </button>
                   </div>
                 </div>
@@ -257,7 +253,7 @@ function App() {
             <form onSubmit={handleBankInfoSubmit} className="space-y-4">
               <div className="relative">
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-400">
-                  <Phone size={18} />
+                  <Package size={18} />
                 </div>
                 <input
                   type="text"
@@ -285,7 +281,7 @@ function App() {
 
               <div className="relative">
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-400">
-                  <CreditCard size={18} />
+                  <Building2 size={18} />
                 </div>
                 <input
                   type="text"
@@ -313,7 +309,7 @@ function App() {
 
               <div className="relative">
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-400">
-                  <CreditCard size={18} />
+                  <User size={18} />
                 </div>
                 <input
                   type="text"
@@ -341,6 +337,85 @@ function App() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center px-4">
+          <div className="bg-gradient-to-br from-gray-800 via-gray-900 to-black border border-green-500/20 rounded-3xl p-8 max-w-lg w-full shadow-2xl">
+            {/* Success Icon */}
+            <div className="text-center mb-6">
+              <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full mb-4 shadow-lg shadow-green-500/30">
+                <Check size={40} className="text-white" />
+              </div>
+              <h2 className="text-2xl font-bold text-white mb-2">
+                🎉 Đăng Ký Thành Công!
+              </h2>
+              <p className="text-green-400 font-medium">
+                Thông tin hoàn tiền đã được ghi nhận
+              </p>
+            </div>
+
+            {/* Success Message */}
+            <div className="bg-black/30 rounded-2xl p-6 mb-6 border border-white/10">
+              <div className="flex items-start gap-3 mb-4">
+                <div className="p-2 bg-blue-500/20 rounded-lg mt-1">
+                  <Package size={20} className="text-blue-400" />
+                </div>
+                <div>
+                  <h3 className="text-white font-semibold mb-2">
+                    Bước tiếp theo:
+                  </h3>
+                  <div className="space-y-3 text-gray-300 text-sm leading-relaxed">
+                    <p className="flex items-center gap-2">
+                      <span className="w-6 h-6 bg-orange-500 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                        1
+                      </span>
+                      Hoàn tất đặt hàng trên Shopee
+                    </p>
+                    <p className="flex items-center gap-2">
+                      <span className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                        2
+                      </span>
+                      Quay lại JPee để nhập thông tin hoàn tiền
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/20 rounded-xl p-4">
+                <div className="flex items-start gap-3">
+                  <div className="p-1 bg-yellow-500/20 rounded-lg">
+                    <Sparkles size={16} className="text-yellow-400" />
+                  </div>
+                  <div>
+                    <h4 className="text-yellow-400 font-medium text-sm mb-1">
+                      Lưu ý quan trọng:
+                    </h4>
+                    <p className="text-gray-300 text-sm">
+                      Tiền hoàn chỉ được xử lý sau khi đơn hàng hoàn tất và được
+                      xác nhận bởi Shopee. Thời gian xử lý từ{" "}
+                      <strong className="text-white">
+                        10-12 ngày làm việc
+                      </strong>
+                      . Tiền hoàn sẽ được chuyển vào tài khoản ngân hàng bạn đã
+                      đăng ký.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Button */}
+            <button
+              onClick={() => setShowSuccessModal(false)}
+              className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-bold py-4 rounded-xl transition-all active:scale-95 shadow-lg shadow-green-500/30 flex items-center justify-center gap-2"
+            >
+              <Check size={20} />
+              Đã hiểu, tiếp tục mua sắm
+            </button>
           </div>
         </div>
       )}
