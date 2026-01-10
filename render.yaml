@@ -1,11 +1,11 @@
 services:
-  # Backend Server
+  # Backend Server with Docker
   - type: web
     name: jtik-server
-    runtime: node
+    runtime: docker
     region: singapore
-    buildCommand: cd server && npm install && npx playwright install --with-deps chromium
-    startCommand: cd server && npm start
+    dockerfilePath: ./Dockerfile
+    dockerCommand: node server/app.ts
     envVars:
       - key: NODE_ENV
         value: production

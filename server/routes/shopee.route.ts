@@ -6,7 +6,7 @@ import { dirname } from "path";
 import { fileURLToPath } from "url";
 import XLSX from "xlsx";
 import { Customer, dbService } from "../services/json-database.service.js";
-import { refreshCookie } from "../services/shoppee-services.service";
+import { refreshCookie } from "../services/shoppee-services.service.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);

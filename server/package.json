@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "dev": "node --no-warnings --loader ts-node/esm app.ts",
-    "start": "node --no-warnings --loader ts-node/esm app.ts"
+    "start": "node dist/app.js",
+    "build": "tsc"
   },
   "dependencies": {
     "@types/uuid": "^11.0.0",
