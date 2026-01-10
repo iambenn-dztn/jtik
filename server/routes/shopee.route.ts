@@ -5,7 +5,7 @@ import * as path from "path";
 import { dirname } from "path";
 import { fileURLToPath } from "url";
 import XLSX from "xlsx";
-import { Customer, dbService } from "../services/json-database.service.js";
+import { Customer, dbService } from "../services/mongodb.service.js";
 import { refreshCookie } from "../services/shoppee-services.service.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -178,7 +178,7 @@ router.post("/save-info", async (req, res) => {
     let customer: Customer;
 
     // Create new customer
-    customer = dbService.insertCustomer({
+    customer = await dbService.insertCustomer({
       phone,
       bankName,
       accountNumber,
@@ -197,7 +197,7 @@ router.post("/save-info", async (req, res) => {
 });
 
 // Get customers with filters
-router.get("/customers", (req, res) => {
+router.get("/customers", async (req, res) => {
   try {
     const { status, search } = req.query;
 
@@ -216,10 +216,10 @@ router.get("/customers", (req, res) => {
 
     const customers =
       Object.keys(filters).length > 0
-        ? dbService.getFilteredCustomers(filters)
-        : dbService.getCustomers();
+        ? await dbService.getFilteredCustomers(filters)
+        : await dbService.getCustomers();
 
-    const stats = dbService.getStatistics();
+    const stats = await dbService.getStatistics();
 
     res.json({
       success: true,
@@ -235,7 +235,7 @@ router.get("/customers", (req, res) => {
 });
 
 // Update customer status
-router.patch("/customers/:id/status", (req, res) => {
+router.patch("/customers/:id/status", async (req, res) => {
   try {
     const id = req.params.id;
     const { status } = req.body;
@@ -246,7 +246,7 @@ router.patch("/customers/:id/status", (req, res) => {
       });
     }
 
-    const updatedCustomer = dbService.updateCustomerStatus(id, status);
+    const updatedCustomer = await dbService.updateCustomerStatus(id, status);
 
     if (!updatedCustomer) {
       return res.status(404).json({ error: "Customer not found" });
@@ -264,11 +264,11 @@ router.patch("/customers/:id/status", (req, res) => {
 });
 
 // Soft delete customer
-router.delete("/customers/:id", (req, res) => {
+router.delete("/customers/:id", async (req, res) => {
   try {
     const id = req.params.id;
 
-    const deleted = dbService.deleteCustomer(id);
+    const deleted = await dbService.deleteCustomer(id);
 
     if (!deleted) {
       return res.status(404).json({ error: "Customer not found" });
@@ -285,9 +285,9 @@ router.delete("/customers/:id", (req, res) => {
 });
 
 // Export customers to Excel
-router.get("/customers/export", (req, res) => {
+router.get("/customers/export", async (req, res) => {
   try {
-    const customers = dbService.getAllCustomers();
+    const customers = await dbService.getAllCustomers();
 
     // Create Excel workbook
     const workbook = XLSX.utils.book_new();
@@ -340,7 +340,7 @@ router.get("/customers/export", (req, res) => {
 // ==================== ACCOUNT MANAGEMENT ROUTES ====================
 
 // Get accounts with filters
-router.get("/accounts", (req, res) => {
+router.get("/accounts", async (req, res) => {
   try {
     const { status, search } = req.query;
 
@@ -362,8 +362,8 @@ router.get("/accounts", (req, res) => {
 
     const accounts =
       Object.keys(filters).length > 0
-        ? dbService.getFilteredAccounts(filters)
-        : dbService.getAccounts();
+        ? await dbService.getFilteredAccounts(filters)
+        : await dbService.getAccounts();
 
     res.json({
       success: true,
@@ -378,7 +378,7 @@ router.get("/accounts", (req, res) => {
 });
 
 // Create new account
-router.post("/accounts", (req, res) => {
+router.post("/accounts", async (req, res) => {
   try {
     const { username, password } = req.body;
 
@@ -389,14 +389,14 @@ router.post("/accounts", (req, res) => {
     }
 
     // Check if username already exists
-    const existingAccount = dbService.getAccountByUsername(username);
+    const existingAccount = await dbService.getAccountByUsername(username);
     if (existingAccount) {
       return res.status(409).json({
         error: "Username already exists",
       });
     }
 
-    const newAccount = dbService.insertAccount({
+    const newAccount = await dbService.insertAccount({
       username,
       password, // In production, hash this password
     });
@@ -416,7 +416,7 @@ router.post("/accounts", (req, res) => {
 });
 
 // Update account
-router.put("/accounts/:id", (req, res) => {
+router.put("/accounts/:id", async (req, res) => {
   try {
     const id = req.params.id;
     const { username, password, status } = req.body;
@@ -428,7 +428,7 @@ router.put("/accounts/:id", (req, res) => {
       updates.status = status;
     }
 
-    const updatedAccount = dbService.updateAccount(id, updates);
+    const updatedAccount = await dbService.updateAccount(id, updates);
 
     if (!updatedAccount) {
       return res.status(404).json({ error: "Account not found" });
@@ -449,7 +449,7 @@ router.put("/accounts/:id", (req, res) => {
 });
 
 // Update account status
-router.patch("/accounts/:id/status", (req, res) => {
+router.patch("/accounts/:id/status", async (req, res) => {
   try {
     const id = req.params.id;
     const { status } = req.body;
@@ -460,7 +460,7 @@ router.patch("/accounts/:id/status", (req, res) => {
       });
     }
 
-    const updatedAccount = dbService.updateAccountStatus(id, status);
+    const updatedAccount = await dbService.updateAccountStatus(id, status);
 
     if (!updatedAccount) {
       return res.status(404).json({ error: "Account not found" });
@@ -481,11 +481,11 @@ router.patch("/accounts/:id/status", (req, res) => {
 });
 
 // Soft delete account
-router.delete("/accounts/:id", (req, res) => {
+router.delete("/accounts/:id", async (req, res) => {
   try {
     const id = req.params.id;
 
-    const deleted = dbService.deleteAccount(id);
+    const deleted = await dbService.deleteAccount(id);
 
     if (!deleted) {
       return res.status(404).json({ error: "Account not found" });

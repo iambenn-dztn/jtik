@@ -14,6 +14,8 @@ services:
         generateValue: true
       - key: CLIENT_URL
         value: https://jtik-client.onrender.com
+      - key: MONGODB_URI
+        sync: false
     healthCheckPath: /api/health
 
   # Frontend Client
@@ -29,3 +31,5 @@ services:
     envVars:
       - key: VITE_API_URL
         value: https://jtik-server.onrender.com
+
+

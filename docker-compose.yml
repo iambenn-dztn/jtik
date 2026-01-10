@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: jtik-mongodb
+    restart: always
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: jtik
+    volumes:
+      - mongodb_data:/data/db
+      - ./server/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/jtik --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: jtik-server
+    restart: always
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - MONGODB_URI=mongodb://mongodb:27017/jtik
+      - ADMIN_PASSWORD=admin123
+      - CLIENT_URL=http://localhost:5173
+    volumes:
+      - ./server:/app/server
+      - /app/server/node_modules
+      - /app/server/dist
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    command: npm run dev
+
+volumes:
+  mongodb_data:
+    driver: local
