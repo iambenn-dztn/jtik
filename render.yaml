@@ -1,29 +1,41 @@
 services:
-  # Backend Server with Docker
+  # Backend Server
   - type: web
     name: jtik-server
     runtime: docker
     region: singapore
     dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: 10000
+      - key: MONGODB_URI
+        sync: false
       - key: ADMIN_PASSWORD
         generateValue: true
       - key: CLIENT_URL
         value: https://jtik-client.onrender.com
-      - key: MONGODB_URI
-        sync: false
-    healthCheckPath: /api/health
-
-  # Frontend Client
+    
+  # Frontend Static Site
   - type: web
     name: jtik-client
     runtime: static
-    buildCommand: cd client && npm install && npm run build
+    buildCommand: ./build.sh
     staticPublishPath: ./client/dist
+    pullRequestPreviewsEnabled: true
+    headers:
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: X-XSS-Protection
+        value: 1; mode=block
     routes:
       - type: rewrite
         source: /*
