@@ -33,8 +33,8 @@ export interface Account {
 class JSONDatabaseService {
   private customerDbPath: string;
   private accountDbPath: string;
-  private customerData: { customers: Customer[] };
-  private accountData: { accounts: Account[] };
+  private customerData: { customers: Customer[] } = { customers: [] };
+  private accountData: { accounts: Account[] } = { accounts: [] };
 
   constructor() {
     this.customerDbPath = path.join(__dirname, "../customer.json");

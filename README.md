@@ -1,20 +1,23 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# JTIK
 
-# Run and deploy your AI Studio app
+## Start
 
-This contains everything you need to run your app locally.
+**Server:**
 
-View your app in AI Studio: https://ai.studio/apps/temp/1
+```bash
+cd server
+bash start.sh
+```
 
-## Run Locally
+**Client:**
 
-**Prerequisites:**  Node.js
+```bash
+cd client
+bash start.sh
+```
 
+## URLs
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+- Client: http://localhost:5173
+- Server: http://localhost:3001
+- API: http://localhost:3001/api

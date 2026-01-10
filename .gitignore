@@ -6,11 +6,27 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+server.log
 
 node_modules
+client/node_modules
+server/node_modules
 dist
 dist-ssr
+client/dist
+server/dist
 *.local
+.env
+.env.local
+client/.env
+client/.env.local
+server/.env
+server/.env.local
+
+# Database
+customer.json
+account.json
+*.json.backup
 
 # Editor directories and files
 .vscode/*
