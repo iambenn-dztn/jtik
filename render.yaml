@@ -2,10 +2,11 @@ services:
   # Backend Server
   - type: web
     name: jtik-server
-    runtime: docker
+    runtime: node
     region: singapore
-    dockerfilePath: ./Dockerfile
     plan: free
+    buildCommand: cd server && npm install && npm run build
+    startCommand: cd server && node dist/app.js
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
@@ -23,9 +24,9 @@ services:
   - type: web
     name: jtik-client
     runtime: static
-    buildCommand: ./build.sh
+    buildCommand: cd client && npm install && npm run build
     staticPublishPath: ./client/dist
-    pullRequestPreviewsEnabled: true
+    pullRequestPreviewsEnabled: false
     headers:
       - path: /*
         name: X-Frame-Options
