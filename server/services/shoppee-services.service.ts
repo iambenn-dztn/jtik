@@ -1,10 +1,10 @@
 import { chromium } from "playwright";
-import { dbService } from "./json-database.service.js";
+import { dbService } from "./mongodb.service.js";
 
 export const refreshCookie = async () => {
-  // 📋 Lấy account đầu tiên từ database
-  const accounts = dbService.getAccounts();
-  const firstAccount = accounts.find((acc) => acc.status === "active");
+  // 📋 Lấy account active đầu tiên từ database
+  const firstAccount = await dbService.getFirstActiveAccount();
+  console.log("firstAccount", firstAccount);
 
   if (!firstAccount) {
     throw new Error("❌ Không tìm thấy account active trong database");
@@ -15,9 +15,9 @@ export const refreshCookie = async () => {
   const SHOPEE_USER = firstAccount.username;
   const SHOPEE_PASS = firstAccount.password;
   const browser = await chromium.launch({
-    headless: true, // 👁️ HIỆN UI
+    headless: false, // 👁️ HIỆN UI
     slowMo: 50, // 🐢 chạy chậm để nhìn rõ
-    devtools: true, // 🔧 mở DevTools
+    devtools: false, // 🔧 mở DevTools
     args: ["--disable-blink-features=AutomationControlled"],
   });
 
@@ -95,5 +95,34 @@ export const refreshCookie = async () => {
   // ❗ KHÔNG close browser để bạn xem UI
   await browser.close();
 
-  return cookies.map((c) => `${c.name}=${c.value}`).join("; ");
+  const cookieString = cookies.map((c) => `${c.name}=${c.value}`).join("; ");
+
+  // 💾 Lưu cookie vào account trong database
+  await dbService.updateAccount(firstAccount.id, { cookie: cookieString });
+  console.log(`✅ Đã lưu cookie vào account ${firstAccount.username}`);
+
+  return cookieString;
+};
+
+/**
+ * Lấy cookie từ account active trong database
+ * Nếu không có cookie hoặc cookie hết hạn, sẽ refresh cookie mới
+ */
+export const getCookie = async (): Promise<string> => {
+  const accounts = await dbService.getAccounts();
+  const firstAccount = accounts.find((acc) => acc.status === "active");
+
+  if (!firstAccount) {
+    throw new Error("❌ Không tìm thấy account active trong database");
+  }
+
+  // Nếu đã có cookie, trả về luôn
+  if (firstAccount.cookie) {
+    console.log(`🍪 Sử dụng cookie có sẵn của ${firstAccount.username}`);
+    return firstAccount.cookie;
+  }
+
+  // Nếu chưa có, refresh cookie mới
+  console.log(`🔄 Chưa có cookie, đang refresh...`);
+  return await refreshCookie();
 };

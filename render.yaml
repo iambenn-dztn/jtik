@@ -18,7 +18,7 @@ services:
         generateValue: true
       - key: CLIENT_URL
         value: https://jtik-client.onrender.com
-    
+
   # Frontend Static Site
   - type: web
     name: jtik-client
@@ -43,5 +43,3 @@ services:
     envVars:
       - key: VITE_API_URL
         value: https://jtik-server.onrender.com
-
-

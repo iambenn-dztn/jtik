@@ -1,8 +1,12 @@
 import { MongoClient, Db, Collection, ObjectId } from "mongodb";
 
-const MONGODB_URI =
-  process.env.MONGODB_URI || "mongodb://localhost:27017/jtik";
+const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/jtik";
 const DB_NAME = "jtik";
+
+console.log(
+  "🔗 MongoDB URI:",
+  MONGODB_URI.replace(/\/\/([^:]+):([^@]+)@/, "//$1:****@")
+); // Log URI (hidden password)
 
 export interface Customer {
   _id?: ObjectId;
@@ -22,6 +26,7 @@ export interface Account {
   id: string;
   username: string;
   password: string;
+  cookie?: string;
   status: "active" | "inactive" | "deleted";
   createdAt: string;
   updatedAt: string;
@@ -35,6 +40,7 @@ class MongoDBService {
   private connected: boolean = false;
 
   constructor() {
+    console.log("MongoDB URI:", MONGODB_URI);
     this.client = new MongoClient(MONGODB_URI);
   }
 
@@ -48,14 +54,21 @@ class MongoDBService {
       this.accounts = this.db.collection<Account>("accounts");
       this.connected = true;
 
-      // Create indexes
-      await this.customers.createIndex({ id: 1 }, { unique: true });
-      await this.customers.createIndex({ phone: 1 });
-      await this.customers.createIndex({ status: 1 });
-      await this.accounts.createIndex({ id: 1 }, { unique: true });
-      await this.accounts.createIndex({ username: 1 }, { unique: true });
+      console.log("✅ Connected to MongoDB Atlas");
+      console.log("📁 Database:", this.db.databaseName);
 
-      console.log("✅ Connected to MongoDB:", DB_NAME);
+      // List collections
+      const collections = await this.db.listCollections().toArray();
+      console.log(
+        "📦 Collections:",
+        collections.map((c) => c.name)
+      );
+
+      // Count documents
+      if (collections.find((c) => c.name === "customers")) {
+        const count = await this.db.collection("customers").countDocuments();
+        console.log(`👥 Customers: ${count} documents`);
+      }
     } catch (error) {
       console.error("❌ MongoDB connection error:", error);
       throw error;
@@ -120,7 +133,9 @@ class MongoDBService {
     return await this.customers!.find(query).sort({ createdAt: -1 }).toArray();
   }
 
-  async insertCustomer(customer: Omit<Customer, "id" | "status" | "createdAt" | "updatedAt">): Promise<Customer> {
+  async insertCustomer(
+    customer: Omit<Customer, "id" | "status" | "createdAt" | "updatedAt">
+  ): Promise<Customer> {
     this.ensureConnected();
 
     const now = new Date().toISOString();
@@ -136,7 +151,10 @@ class MongoDBService {
     return newCustomer;
   }
 
-  async updateCustomerStatus(id: string, status: "active" | "paid" | "deleted"): Promise<Customer | null> {
+  async updateCustomerStatus(
+    id: string,
+    status: "active" | "paid" | "deleted"
+  ): Promise<Customer | null> {
     this.ensureConnected();
 
     const result = await this.customers!.findOneAndUpdate(
@@ -206,7 +224,18 @@ class MongoDBService {
 
   async getAccountByUsername(username: string): Promise<Account | null> {
     this.ensureConnected();
-    return await this.accounts!.findOne({ username, status: { $ne: "deleted" } });
+    return await this.accounts!.findOne({
+      username,
+      status: { $ne: "deleted" },
+    });
+  }
+
+  async getFirstActiveAccount(): Promise<Account | null> {
+    this.ensureConnected();
+    console.log(1111);
+    return await this.accounts!.findOne({
+      status: "active",
+    });
   }
 
   async getFilteredAccounts(filters: {
@@ -230,7 +259,9 @@ class MongoDBService {
     return await this.accounts!.find(query).sort({ createdAt: -1 }).toArray();
   }
 
-  async insertAccount(account: Omit<Account, "id" | "status" | "createdAt" | "updatedAt">): Promise<Account> {
+  async insertAccount(
+    account: Omit<Account, "id" | "status" | "createdAt" | "updatedAt">
+  ): Promise<Account> {
     this.ensureConnected();
 
     const now = new Date().toISOString();
@@ -246,7 +277,10 @@ class MongoDBService {
     return newAccount;
   }
 
-  async updateAccount(id: string, updates: Partial<Omit<Account, "id" | "createdAt">>): Promise<Account | null> {
+  async updateAccount(
+    id: string,
+    updates: Partial<Omit<Account, "id" | "createdAt">>
+  ): Promise<Account | null> {
     this.ensureConnected();
 
     const result = await this.accounts!.findOneAndUpdate(
@@ -263,7 +297,10 @@ class MongoDBService {
     return result || null;
   }
 
-  async updateAccountStatus(id: string, status: "active" | "inactive" | "deleted"): Promise<Account | null> {
+  async updateAccountStatus(
+    id: string,
+    status: "active" | "inactive" | "deleted"
+  ): Promise<Account | null> {
     this.ensureConnected();
 
     const result = await this.accounts!.findOneAndUpdate(

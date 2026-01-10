@@ -14,6 +14,7 @@ Full-stack application for managing Shopee affiliate links and customer data wit
 ## 🛠️ Tech Stack
 
 **Frontend:**
+
 - React 19
 - TypeScript
 - Vite
@@ -21,6 +22,7 @@ Full-stack application for managing Shopee affiliate links and customer data wit
 - Axios
 
 **Backend:**
+
 - Node.js 20
 - Express 5
 - TypeScript
@@ -44,10 +46,12 @@ open http://localhost:5173
 ### Option 2: Manual Setup
 
 **Prerequisites:**
+
 - Node.js 20+
 - MongoDB running
 
 **Server:**
+
 ```bash
 cd server
 npm install
@@ -55,6 +59,7 @@ npm run dev
 ```
 
 **Client:**
+
 ```bash
 cd client
 npm install
@@ -71,12 +76,14 @@ npm run dev
 ## 🌐 URLs
 
 ### Local Development
+
 - **Client:** http://localhost:5173
 - **Server:** http://localhost:3001
 - **API:** http://localhost:3001/api
 - **MongoDB:** mongodb://localhost:27017/jtik
 
 ### Production
+
 - **Client:** https://jtik-client.onrender.com
 - **Server:** https://jtik-server.onrender.com
 - **API:** https://jtik-server.onrender.com/api
@@ -116,6 +123,7 @@ npm run dev
 ### Quick Deploy to Render
 
 1. Setup MongoDB Atlas (free):
+
 ```bash
 ./deploy-render.sh
 ```
@@ -153,6 +161,7 @@ jtik/
 ## 🔐 Environment Variables
 
 ### Server
+
 ```env
 NODE_ENV=development|production
 PORT=3001|10000
@@ -162,6 +171,7 @@ CLIENT_URL=http://localhost:5173
 ```
 
 ### Client
+
 ```env
 VITE_API_URL=http://localhost:3001
 ```
@@ -182,11 +192,13 @@ curl http://localhost:3001/api/shopee/customers
 ## 📊 API Endpoints
 
 ### Health Check
+
 ```
 GET /api/health
 ```
 
 ### Shopee Routes
+
 ```
 POST /api/shopee/transform-link    # Transform affiliate link
 POST /api/shopee/save-info          # Save customer info
@@ -197,6 +209,7 @@ DELETE /api/shopee/customers/:id
 ```
 
 ### Account Management
+
 ```
 GET  /api/shopee/accounts
 POST /api/shopee/accounts
@@ -206,6 +219,7 @@ DELETE /api/shopee/accounts/:id
 ```
 
 ### Admin
+
 ```
 POST /api/shopee/admin/auth        # Admin authentication
 ```

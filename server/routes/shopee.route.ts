@@ -6,24 +6,13 @@ import { dirname } from "path";
 import { fileURLToPath } from "url";
 import XLSX from "xlsx";
 import { Customer, dbService } from "../services/mongodb.service.js";
-import { refreshCookie } from "../services/shoppee-services.service.js";
+import {
+  refreshCookie,
+  getCookie,
+} from "../services/shoppee-services.service.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-
-// Function to read cookies from file
-const getCookiesFromFile = () => {
-  try {
-    const cookiePath = path.join(__dirname, "../cookie.txt");
-    if (fs.existsSync(cookiePath)) {
-      return fs.readFileSync(cookiePath, "utf8").trim();
-    }
-    return "";
-  } catch (error) {
-    console.error("Error reading cookie file:", error);
-    return "";
-  }
-};
 
 // Function to write cookies to file
 const writeCookiesToFile = (cookies: string) => {
@@ -64,6 +53,7 @@ router.post("/admin/auth", (req, res) => {
 });
 
 router.post("/transform-link", async (req, res) => {
+  console.log("Received transform-link request1");
   const { link } = req.body;
 
   let data = `{"operationName":"batchGetCustomLink","query":"\\n    query batchGetCustomLink($linkParams: [CustomLinkParam!], $sourceCaller: SourceCaller){\\n      batchCustomLink(linkParams: $linkParams, sourceCaller: $sourceCaller){\\n        shortLink\\n        longLink\\n        failCode\\n      }\\n    }\\n    ","variables":{"linkParams":[{"originalLink":"${link}","advancedLinkParams":{"subId1":"j99"}}],"sourceCaller":"CUSTOM_LINK_CALLER"}}`;
@@ -106,16 +96,12 @@ router.post("/transform-link", async (req, res) => {
   };
 
   try {
-    // First attempt with existing cookies
-    const cookie = getCookiesFromFile();
-
-    if (!cookie) {
-      throw new Error("No cookies found in file");
-    }
-    console.log("Using cookies from file:", cookie);
+    // First attempt with existing cookies from database
+    const cookie = await getCookie();
+    console.log("Using cookies from database");
     const response = await makeRequest(cookie);
     console.log("response", JSON.stringify(response.data));
-    if (response.data.errors) {
+    if (response.data.errors || response.data.error) {
       throw new Error("Shopee API returned errors");
     }
     res.json({ data: response.data.data });
@@ -123,15 +109,13 @@ router.post("/transform-link", async (req, res) => {
     console.error("Shopee API error, attempting to refresh cookies:", error);
 
     try {
-      // Refresh cookies and retry (temporarily disabled due to Playwright dependency)
+      // Refresh cookies and retry
+      console.log("🔄 Refreshing cookies...");
       const newCookies = await refreshCookie();
-      console.log("Refreshed cookies:", newCookies);
-
-      // Write new cookies to file
-      writeCookiesToFile(newCookies as unknown as string);
+      console.log("✅ Cookies refreshed and saved to database");
 
       // Retry with new cookies
-      const retryResponse = await makeRequest(newCookies as unknown as string);
+      const retryResponse = await makeRequest(newCookies);
       console.log("retryResponse", retryResponse.data.data);
 
       res.json({ data: retryResponse.data.data });
@@ -498,6 +482,26 @@ router.delete("/accounts/:id", async (req, res) => {
   } catch (error) {
     console.error("Error deleting account:", error);
     res.status(500).json({ error: "Failed to delete account" });
+  }
+});
+
+// Test refresh cookie (manual trigger)
+router.post("/refresh-cookie", async (req, res) => {
+  try {
+    console.log("🔄 Manual cookie refresh triggered");
+    const newCookie = await refreshCookie();
+
+    res.json({
+      success: true,
+      message: "Cookie refreshed and saved successfully",
+      cookieLength: newCookie.length,
+    });
+  } catch (error) {
+    console.error("Error refreshing cookie:", error);
+    res.status(500).json({
+      error: "Failed to refresh cookie",
+      details: error instanceof Error ? error.message : String(error),
+    });
   }
 });
 
