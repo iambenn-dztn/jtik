@@ -14,7 +14,7 @@ services:
       - key: PORT
         value: 10000
       - key: MONGODB_URI
-        sync: false
+        value: mongodb+srv://bennguynmmo_db_jtik:GQZg54U9KEHJrzN2@jtik.qnhdmtj.mongodb.net/jtik
       - key: ADMIN_PASSWORD
         generateValue: true
       - key: CLIENT_URL
