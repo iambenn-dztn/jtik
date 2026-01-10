@@ -3,21 +3,33 @@ services:
   - type: web
     name: jtik-server
     runtime: node
+    region: singapore
+    plan: free
     buildCommand: cd server && npm install && npx playwright install --with-deps chromium
     startCommand: cd server && npm start
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: 3000
+        value: 10000
+      - key: ADMIN_PASSWORD
+        generateValue: true
+      - key: CLIENT_URL
+        value: https://jtik-client.onrender.com
+    healthCheckPath: /api/health
 
   # Frontend Client
   - type: web
     name: jtik-client
     runtime: static
+    region: singapore
+    plan: free
     buildCommand: cd client && npm install && npm run build
     staticPublishPath: ./client/dist
     routes:
       - type: rewrite
         source: /*
         destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        value: https://jtik-server.onrender.com

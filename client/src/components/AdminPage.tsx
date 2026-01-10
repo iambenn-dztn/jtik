@@ -18,6 +18,7 @@ import {
   Lock,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
+import config from "../config/api";
 
 interface Customer {
   id: string;
@@ -100,7 +101,7 @@ function AdminPage() {
         params.set("search", searchQuery.trim());
       }
 
-      const url = `http://localhost:3001/api/shopee/customers${
+      const url = `${config.endpoints.customers}${
         params.toString() ? `?${params.toString()}` : ""
       }`;
 
@@ -132,7 +133,7 @@ function AdminPage() {
   ) => {
     try {
       const response = await fetch(
-        `http://localhost:3001/api/shopee/customers/${id}/status`,
+        `${config.endpoints.customers}/${id}/status`,
         {
           method: "PATCH",
           headers: {
@@ -156,12 +157,9 @@ function AdminPage() {
   const deleteCustomer = async (id: string) => {
     if (window.confirm("Bạn có chắc chắn muốn xóa khách hàng này?")) {
       try {
-        const response = await fetch(
-          `http://localhost:3001/api/shopee/customers/${id}`,
-          {
-            method: "DELETE",
-          }
-        );
+        const response = await fetch(`${config.endpoints.customers}/${id}`, {
+          method: "DELETE",
+        });
 
         if (response.ok) {
           await fetchCustomers(); // Refresh the list
@@ -177,7 +175,7 @@ function AdminPage() {
   // Account management functions
   const fetchAccounts = async () => {
     try {
-      const response = await fetch("http://localhost:3001/api/shopee/accounts");
+      const response = await fetch(config.endpoints.accounts);
       const result = await response.json();
 
       if (result.success) {
@@ -196,8 +194,8 @@ function AdminPage() {
     try {
       const url =
         accountModalMode === "add"
-          ? "http://localhost:3001/api/shopee/accounts"
-          : `http://localhost:3001/api/shopee/accounts/${selectedAccount?.id}`;
+          ? config.endpoints.accounts
+          : `${config.endpoints.accounts}/${selectedAccount?.id}`;
 
       const method = accountModalMode === "add" ? "POST" : "PUT";
 
@@ -235,7 +233,7 @@ function AdminPage() {
   ) => {
     try {
       const response = await fetch(
-        `http://localhost:3001/api/shopee/accounts/${id}/status`,
+        `${config.endpoints.accounts}/${id}/status`,
         {
           method: "PATCH",
           headers: {
@@ -258,12 +256,9 @@ function AdminPage() {
   const deleteAccount = async (id: string) => {
     if (window.confirm("Bạn có chắc chắn muốn xóa tài khoản này?")) {
       try {
-        const response = await fetch(
-          `http://localhost:3001/api/shopee/accounts/${id}`,
-          {
-            method: "DELETE",
-          }
-        );
+        const response = await fetch(`${config.endpoints.accounts}/${id}`, {
+          method: "DELETE",
+        });
 
         if (response.ok) {
           fetchAccounts();
@@ -317,16 +312,13 @@ function AdminPage() {
     setAuthError("");
 
     try {
-      const response = await fetch(
-        "http://localhost:3001/api/shopee/admin/auth",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ password }),
-        }
-      );
+      const response = await fetch(config.endpoints.adminAuth, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ password }),
+      });
 
       const data = await response.json();
 
@@ -471,10 +463,7 @@ function AdminPage() {
                   </button>
                   <button
                     onClick={() =>
-                      window.open(
-                        "http://localhost:3001/api/shopee/customers/export",
-                        "_blank"
-                      )
+                      window.open(config.endpoints.exportCustomers, "_blank")
                     }
                     className="flex items-center gap-2 px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 transition-all"
                   >

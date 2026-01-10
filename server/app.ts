@@ -19,8 +19,22 @@ try {
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-app.use(cors());
+app.use(
+  cors({
+    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    credentials: true,
+  })
+);
 app.use(express.json());
+
+// Health check endpoint (for Render)
+app.get("/api/health", (req, res) => {
+  res.json({
+    status: "OK",
+    timestamp: new Date().toISOString(),
+    env: process.env.NODE_ENV || "development",
+  });
+});
 
 app.use("/api/shopee", shopeeRouter);
 
@@ -52,4 +66,8 @@ process.on("uncaughtException", (error) => {
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`📡 API endpoint: http://localhost:${PORT}/api`);
+  console.log(`🌍 Environment: ${process.env.NODE_ENV || "development"}`);
+  console.log(
+    `🔗 CORS Origin: ${process.env.CLIENT_URL || "http://localhost:5173"}`
+  );
 });

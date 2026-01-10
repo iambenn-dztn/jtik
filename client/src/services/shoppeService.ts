@@ -1,11 +1,12 @@
 import axios from "axios";
+import config from "../config/api";
 
-const BASE_URL = "http://localhost:3001/api/shopee";
+const BASE_URL = config.apiUrl + "/api/shopee";
 
 export const transformLink = async (link: string): Promise<string> => {
-  const url = `${BASE_URL}/transform-link`;
+  const url = config.endpoints.transformLink;
 
-  let config = {
+  const axiosConfig = {
     method: "post",
     url,
     data: {
@@ -13,7 +14,7 @@ export const transformLink = async (link: string): Promise<string> => {
     },
   };
 
-  const res = await axios.request(config);
+  const res = await axios.request(axiosConfig);
   if (res.status === 200) {
     return res.data.data.batchCustomLink[0].shortLink;
   }
@@ -22,9 +23,9 @@ export const transformLink = async (link: string): Promise<string> => {
 };
 
 export const saveInfo = async (info: any): Promise<string> => {
-  const url = `${BASE_URL}/save-info`;
+  const url = config.endpoints.saveInfo;
 
-  let config = {
+  const axiosConfig = {
     method: "post",
     url,
     data: {
@@ -32,7 +33,7 @@ export const saveInfo = async (info: any): Promise<string> => {
     },
   };
 
-  const res = await axios.request(config);
+  const res = await axios.request(axiosConfig);
   if (res.status === 200) {
     return res.data.message;
   }
