@@ -18,6 +18,7 @@ server/dist
 *.local
 .env
 .env.local
+.env.render
 client/.env
 client/.env.local
 server/.env
