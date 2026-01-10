@@ -41,6 +41,24 @@ services:
         condition: service_healthy
     command: npm run dev
 
+  client:
+    build:
+      context: .
+      dockerfile: Dockerfile.client
+    container_name: jtik-client
+    restart: always
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:3001
+    volumes:
+      - ./client:/app/client
+      - /app/client/node_modules
+    depends_on:
+      - server
+    command: npm run dev
+
 volumes:
   mongodb_data:
     driver: local
+
