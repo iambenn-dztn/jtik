@@ -41,7 +41,17 @@ class MongoDBService {
 
   constructor() {
     console.log("MongoDB URI:", MONGODB_URI);
-    this.client = new MongoClient(MONGODB_URI);
+    this.client = new MongoClient(MONGODB_URI, {
+      serverSelectionTimeoutMS: 30000,
+      socketTimeoutMS: 45000,
+      connectTimeoutMS: 30000,
+      retryWrites: true,
+      retryReads: true,
+      maxPoolSize: 10,
+      minPoolSize: 2,
+      tls: true,
+      tlsAllowInvalidCertificates: false,
+    });
   }
 
   async connect(): Promise<void> {
