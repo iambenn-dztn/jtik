@@ -84,7 +84,8 @@ process.on("SIGTERM", async () => {
 });
 
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);\n  console.log(`📡 API endpoint: http://localhost:${PORT}/api`);
+  console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
+  console.log(`📡 API endpoint: http://localhost:${PORT}/api`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || "development"}`);
   console.log(
     `🔗 CORS Origin: ${process.env.CLIENT_URL || "http://localhost:5173"}`
