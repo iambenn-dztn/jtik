@@ -1,26 +1,36 @@
-FROM mcr.microsoft.com/playwright:v1.57.0-focal
+FROM node:18
 
 WORKDIR /app
 
-# Copy server package files
+# Copy package files
 COPY server/package*.json ./server/
+COPY client/package*.json ./client/
+
+# Install server dependencies
 WORKDIR /app/server
+RUN npm install
 
-# Install dependencies
-RUN npm ci --production=false
+# Install Playwright with all dependencies
+RUN npx playwright install --with-deps chromium
 
-# Copy server source code
-COPY server ./
+# Install client dependencies
+WORKDIR /app/client
+RUN npm install
 
-# Build TypeScript
+# Copy source code
+WORKDIR /app
+COPY . .
+
+# Build client
+WORKDIR /app/client
 RUN npm run build
 
-# Set environment variables
-ENV NODE_ENV=production
-ENV PORT=10000
-ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+# Build server
+WORKDIR /app/server
+RUN npm run build
+
+WORKDIR /app/server
 
 EXPOSE 10000
 
-# Start the server
 CMD ["npm", "start"]
