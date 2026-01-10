@@ -2,11 +2,11 @@ services:
   # Backend Server
   - type: web
     name: jtik-server
-    runtime: node
+    runtime: docker
     region: singapore
     plan: free
-    buildCommand: cd server && npm install && npx playwright install chromium && npm run build
-    startCommand: cd server && npm start
+    dockerfilePath: ./Dockerfile
+    dockerContext: ./
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
