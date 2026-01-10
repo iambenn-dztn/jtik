@@ -4,7 +4,6 @@ services:
     name: jtik-server
     runtime: node
     region: singapore
-    plan: free
     buildCommand: cd server && npm install && npx playwright install --with-deps chromium
     startCommand: cd server && npm start
     envVars:
@@ -22,7 +21,6 @@ services:
   - type: web
     name: jtik-client
     runtime: static
-    plan: free
     buildCommand: cd client && npm install && npm run build
     staticPublishPath: ./client/dist
     routes:
