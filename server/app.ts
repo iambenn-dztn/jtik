@@ -15,11 +15,15 @@ await dbService.connect();
 
 // Add error handling for imports
 let shopeeRouter;
+let authRouter;
 try {
-  const module = await import("./routes/shopee.route.js");
-  shopeeRouter = module.default;
+  const shopeeModule = await import("./routes/shopee.route.js");
+  shopeeRouter = shopeeModule.default;
+
+  const authModule = await import("./routes/auth.route.js");
+  authRouter = authModule.default;
 } catch (error) {
-  console.error("Error importing shopee router:", error);
+  console.error("Error importing routers:", error);
   process.exit(1);
 }
 
@@ -44,6 +48,7 @@ app.get("/api/health", (req, res) => {
 });
 
 app.use("/api/shopee", shopeeRouter);
+app.use("/api/auth", authRouter);
 
 app.use("/files", express.static(path.join(__dirname)));
 

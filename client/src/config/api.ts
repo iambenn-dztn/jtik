@@ -5,7 +5,6 @@ export const config = {
   endpoints: {
     transformLink: `${API_URL}/api/shopee/transform-link`,
     saveInfo: `${API_URL}/api/shopee/save-info`,
-    adminAuth: `${API_URL}/api/shopee/admin/auth`,
     customers: `${API_URL}/api/shopee/customers`,
     accounts: `${API_URL}/api/shopee/accounts`,
     exportCustomers: `${API_URL}/api/shopee/customers/export`,

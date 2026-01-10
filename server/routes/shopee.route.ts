@@ -10,6 +10,10 @@ import {
   refreshCookie,
   getCookie,
 } from "../services/shoppee-services.service.js";
+import {
+  authenticateToken,
+  requireAdmin,
+} from "../middleware/auth.middleware.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -27,7 +31,8 @@ const writeCookiesToFile = (cookies: string) => {
 
 const router = express.Router();
 
-// Admin authentication endpoint
+// Old admin auth endpoint - DEPRECATED
+// Use /api/auth/login instead
 router.post("/admin/auth", (req, res) => {
   try {
     const { password } = req.body;
@@ -52,6 +57,7 @@ router.post("/admin/auth", (req, res) => {
   }
 });
 
+// Public endpoint - no auth required
 router.post("/transform-link", async (req, res) => {
   console.log("Received transform-link request1");
   const { link } = req.body;
@@ -180,8 +186,8 @@ router.post("/save-info", async (req, res) => {
   }
 });
 
-// Get customers with filters
-router.get("/customers", async (req, res) => {
+// Get customers with filters (PROTECTED - requires admin auth)
+router.get("/customers", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { status, search } = req.query;
 
@@ -248,83 +254,98 @@ router.patch("/customers/:id/status", async (req, res) => {
 });
 
 // Soft delete customer
-router.delete("/customers/:id", async (req, res) => {
-  try {
-    const id = req.params.id;
+router.delete(
+  "/customers/:id",
+  authenticateToken,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const id = req.params.id;
 
-    const deleted = await dbService.deleteCustomer(id);
+      const deleted = await dbService.deleteCustomer(id);
 
-    if (!deleted) {
-      return res.status(404).json({ error: "Customer not found" });
+      if (!deleted) {
+        return res.status(404).json({ error: "Customer not found" });
+      }
+
+      res.json({
+        success: true,
+        message: "Customer deleted successfully",
+      });
+    } catch (error) {
+      console.error("Error deleting customer:", error);
+      res.status(500).json({ error: "Failed to delete customer" });
     }
-
-    res.json({
-      success: true,
-      message: "Customer deleted successfully",
-    });
-  } catch (error) {
-    console.error("Error deleting customer:", error);
-    res.status(500).json({ error: "Failed to delete customer" });
   }
-});
+);
 
 // Export customers to Excel
-router.get("/customers/export", async (req, res) => {
-  try {
-    const customers = await dbService.getAllCustomers();
+router.get(
+  "/customers/export",
+  authenticateToken,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const customers = await dbService.getAllCustomers();
 
-    // Create Excel workbook
-    const workbook = XLSX.utils.book_new();
+      // Create Excel workbook
+      const workbook = XLSX.utils.book_new();
 
-    // Prepare data for Excel
-    const excelData = [
-      [
-        "ID",
-        "Mã Đơn Hàng",
-        "Số Điện Thoại",
-        "Tên Ngân Hàng",
-        "Số Tài Khoản",
-        "Tên Chủ Tài Khoản",
-        "Ngày Tạo",
-        "Cập Nhật Lần Cuối",
-      ],
-      ...customers.map((customer) => [
-        customer.id,
-        customer.orderId,
-        customer.phone,
-        customer.bankName,
-        customer.accountNumber,
-        customer.accountName,
-        customer.createdAt,
-        customer.updatedAt,
-      ]),
-    ];
+      // Prepare data for Excel
+      const excelData = [
+        [
+          "ID",
+          "Mã Đơn Hàng",
+          "Số Điện Thoại",
+          "Tên Ngân Hàng",
+          "Số Tài Khoản",
+          "Tên Chủ Tài Khoản",
+          "Ngày Tạo",
+          "Cập Nhật Lần Cuối",
+        ],
+        ...customers.map((customer) => [
+          customer.id,
+          customer.orderId,
+          customer.phone,
+          customer.bankName,
+          customer.accountNumber,
+          customer.accountName,
+          customer.createdAt,
+          customer.updatedAt,
+        ]),
+      ];
 
-    const worksheet = XLSX.utils.aoa_to_sheet(excelData);
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Customers");
+      const worksheet = XLSX.utils.aoa_to_sheet(excelData);
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Customers");
 
-    // Generate buffer
-    const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
+      // Generate buffer
+      const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
 
-    const fileName = `customers_${new Date().toISOString().split("T")[0]}.xlsx`;
+      const fileName = `customers_${
+        new Date().toISOString().split("T")[0]
+      }.xlsx`;
 
-    res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
-    res.setHeader(
-      "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    );
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${fileName}"`
+      );
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
 
-    res.send(buffer);
-  } catch (error) {
-    console.error("Error exporting customers:", error);
-    res.status(500).json({ error: "Failed to export customers" });
+      res.send(buffer);
+    } catch (error) {
+      console.error("Error exporting customers:", error);
+      res.status(500).json({ error: "Failed to export customers" });
+    }
   }
-});
+);
 
 // ==================== ACCOUNT MANAGEMENT ROUTES ====================
 
 // Get accounts with filters
-router.get("/accounts", async (req, res) => {
+router.get("/accounts", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { status, search } = req.query;
 
@@ -362,7 +383,7 @@ router.get("/accounts", async (req, res) => {
 });
 
 // Create new account
-router.post("/accounts", async (req, res) => {
+router.post("/accounts", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { username, password } = req.body;
 
@@ -400,37 +421,42 @@ router.post("/accounts", async (req, res) => {
 });
 
 // Update account
-router.put("/accounts/:id", async (req, res) => {
-  try {
-    const id = req.params.id;
-    const { username, password, status } = req.body;
+router.put(
+  "/accounts/:id",
+  authenticateToken,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const id = req.params.id;
+      const { username, password, status } = req.body;
 
-    const updates: any = {};
-    if (username) updates.username = username;
-    if (password) updates.password = password; // In production, hash this
-    if (status && ["active", "inactive", "deleted"].includes(status)) {
-      updates.status = status;
+      const updates: any = {};
+      if (username) updates.username = username;
+      if (password) updates.password = password; // In production, hash this
+      if (status && ["active", "inactive", "deleted"].includes(status)) {
+        updates.status = status;
+      }
+
+      const updatedAccount = await dbService.updateAccount(id, updates);
+
+      if (!updatedAccount) {
+        return res.status(404).json({ error: "Account not found" });
+      }
+
+      // Don't return password in response
+      const { password: _, ...accountResponse } = updatedAccount;
+
+      res.json({
+        success: true,
+        message: "Account updated successfully",
+        data: accountResponse,
+      });
+    } catch (error) {
+      console.error("Error updating account:", error);
+      res.status(500).json({ error: "Failed to update account" });
     }
-
-    const updatedAccount = await dbService.updateAccount(id, updates);
-
-    if (!updatedAccount) {
-      return res.status(404).json({ error: "Account not found" });
-    }
-
-    // Don't return password in response
-    const { password: _, ...accountResponse } = updatedAccount;
-
-    res.json({
-      success: true,
-      message: "Account updated successfully",
-      data: accountResponse,
-    });
-  } catch (error) {
-    console.error("Error updating account:", error);
-    res.status(500).json({ error: "Failed to update account" });
   }
-});
+);
 
 // Update account status
 router.patch("/accounts/:id/status", async (req, res) => {
@@ -465,44 +491,54 @@ router.patch("/accounts/:id/status", async (req, res) => {
 });
 
 // Soft delete account
-router.delete("/accounts/:id", async (req, res) => {
-  try {
-    const id = req.params.id;
+router.delete(
+  "/accounts/:id",
+  authenticateToken,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const id = req.params.id;
 
-    const deleted = await dbService.deleteAccount(id);
+      const deleted = await dbService.deleteAccount(id);
 
-    if (!deleted) {
-      return res.status(404).json({ error: "Account not found" });
+      if (!deleted) {
+        return res.status(404).json({ error: "Account not found" });
+      }
+
+      res.json({
+        success: true,
+        message: "Account deleted successfully",
+      });
+    } catch (error) {
+      console.error("Error deleting account:", error);
+      res.status(500).json({ error: "Failed to delete account" });
     }
-
-    res.json({
-      success: true,
-      message: "Account deleted successfully",
-    });
-  } catch (error) {
-    console.error("Error deleting account:", error);
-    res.status(500).json({ error: "Failed to delete account" });
   }
-});
+);
 
 // Test refresh cookie (manual trigger)
-router.post("/refresh-cookie", async (req, res) => {
-  try {
-    console.log("🔄 Manual cookie refresh triggered");
-    const newCookie = await refreshCookie();
+router.post(
+  "/refresh-cookie",
+  authenticateToken,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      console.log("🔄 Manual cookie refresh triggered");
+      const newCookie = await refreshCookie();
 
-    res.json({
-      success: true,
-      message: "Cookie refreshed and saved successfully",
-      cookieLength: newCookie.length,
-    });
-  } catch (error) {
-    console.error("Error refreshing cookie:", error);
-    res.status(500).json({
-      error: "Failed to refresh cookie",
-      details: error instanceof Error ? error.message : String(error),
-    });
+      res.json({
+        success: true,
+        message: "Cookie refreshed and saved successfully",
+        cookieLength: newCookie.length,
+      });
+    } catch (error) {
+      console.error("Error refreshing cookie:", error);
+      res.status(500).json({
+        error: "Failed to refresh cookie",
+        details: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
-});
+);
 
 export default router;

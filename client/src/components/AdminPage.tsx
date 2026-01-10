@@ -16,9 +16,11 @@ import {
   XCircle,
   Clock,
   Lock,
+  LogOut,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import config from "../config/api";
+import * as authService from "../services/authService";
 
 interface Customer {
   id: string;
@@ -53,10 +55,7 @@ interface Statistics {
 function AdminPage() {
   const navigate = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [showAuthModal, setShowAuthModal] = useState(true);
-  const [password, setPassword] = useState("");
-  const [authLoading, setAuthLoading] = useState(false);
-  const [authError, setAuthError] = useState("");
+  const [username, setUsername] = useState<string | null>(null);
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [statistics, setStatistics] = useState<Statistics>({
@@ -105,7 +104,7 @@ function AdminPage() {
         params.toString() ? `?${params.toString()}` : ""
       }`;
 
-      const response = await fetch(url);
+      const response = await authService.authenticatedFetch(url);
       const result = await response.json();
 
       if (result.success) {
@@ -132,7 +131,7 @@ function AdminPage() {
     status: "active" | "paid" | "deleted"
   ) => {
     try {
-      const response = await fetch(
+      const response = await authService.authenticatedFetch(
         `${config.endpoints.customers}/${id}/status`,
         {
           method: "PATCH",
@@ -157,9 +156,12 @@ function AdminPage() {
   const deleteCustomer = async (id: string) => {
     if (window.confirm("Bạn có chắc chắn muốn xóa khách hàng này?")) {
       try {
-        const response = await fetch(`${config.endpoints.customers}/${id}`, {
-          method: "DELETE",
-        });
+        const response = await authService.authenticatedFetch(
+          `${config.endpoints.customers}/${id}`,
+          {
+            method: "DELETE",
+          }
+        );
 
         if (response.ok) {
           await fetchCustomers(); // Refresh the list
@@ -175,7 +177,9 @@ function AdminPage() {
   // Account management functions
   const fetchAccounts = async () => {
     try {
-      const response = await fetch(config.endpoints.accounts);
+      const response = await authService.authenticatedFetch(
+        config.endpoints.accounts
+      );
       const result = await response.json();
 
       if (result.success) {
@@ -199,7 +203,7 @@ function AdminPage() {
 
       const method = accountModalMode === "add" ? "POST" : "PUT";
 
-      const response = await fetch(url, {
+      const response = await authService.authenticatedFetch(url, {
         method,
         headers: {
           "Content-Type": "application/json",
@@ -232,7 +236,7 @@ function AdminPage() {
     status: "active" | "inactive" | "deleted"
   ) => {
     try {
-      const response = await fetch(
+      const response = await authService.authenticatedFetch(
         `${config.endpoints.accounts}/${id}/status`,
         {
           method: "PATCH",
@@ -256,9 +260,12 @@ function AdminPage() {
   const deleteAccount = async (id: string) => {
     if (window.confirm("Bạn có chắc chắn muốn xóa tài khoản này?")) {
       try {
-        const response = await fetch(`${config.endpoints.accounts}/${id}`, {
-          method: "DELETE",
-        });
+        const response = await authService.authenticatedFetch(
+          `${config.endpoints.accounts}/${id}`,
+          {
+            method: "DELETE",
+          }
+        );
 
         if (response.ok) {
           fetchAccounts();
@@ -294,6 +301,24 @@ function AdminPage() {
     setShowAccountModal(true);
   };
 
+  // Check authentication on mount
+  useEffect(() => {
+    const checkAuth = () => {
+      const isAuth = authService.isAuthenticated();
+      const storedUsername = authService.getUsername();
+
+      if (!isAuth) {
+        // Redirect to login if not authenticated
+        navigate("/admin/login");
+      } else {
+        setIsAuthenticated(true);
+        setUsername(storedUsername);
+      }
+    };
+
+    checkAuth();
+  }, [navigate]);
+
   // Handle filter/search changes with debouncing
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -305,41 +330,13 @@ function AdminPage() {
     return () => clearTimeout(timeoutId);
   }, [fetchCustomers, isAuthenticated]);
 
-  // Authentication function
-  const handleAuth = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setAuthLoading(true);
-    setAuthError("");
-
-    try {
-      const response = await fetch(config.endpoints.adminAuth, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ password }),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        setIsAuthenticated(true);
-        setShowAuthModal(false);
-        setPassword("");
-      } else {
-        setAuthError(data.message || "Invalid password");
-      }
-    } catch (error) {
-      console.error("Authentication error:", error);
-      setAuthError("Connection error. Please try again.");
-    } finally {
-      setAuthLoading(false);
+  // Handle logout
+  const handleLogout = async () => {
+    const refreshToken = authService.getRefreshToken();
+    if (refreshToken) {
+      await authService.logout(refreshToken);
     }
-  };
-
-  // Redirect to home if auth fails
-  const handleAuthCancel = () => {
-    navigate("/");
+    navigate("/admin/login");
   };
 
   // Initial load when authenticated
@@ -351,69 +348,6 @@ function AdminPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-blue-900 text-white">
-      {/* Authentication Modal */}
-      {showAuthModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
-          <div className="bg-gray-800 border border-white/10 rounded-2xl p-8 max-w-md w-full mx-4">
-            <div className="text-center mb-6">
-              <div className="p-4 bg-blue-500/20 rounded-full w-fit mx-auto mb-4">
-                <Lock size={32} className="text-blue-400" />
-              </div>
-              <h2 className="text-2xl font-bold mb-2">Admin Access</h2>
-              <p className="text-gray-400">
-                Nhập mật khẩu để truy cập trang quản trị
-              </p>
-            </div>
-
-            <form onSubmit={handleAuth} className="space-y-4">
-              <div>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Nhập mật khẩu..."
-                  className="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none"
-                  disabled={authLoading}
-                  autoFocus
-                />
-              </div>
-
-              {authError && (
-                <div className="flex items-center gap-2 text-red-400 text-sm">
-                  <XCircle size={16} />
-                  {authError}
-                </div>
-              )}
-
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={handleAuthCancel}
-                  className="flex-1 px-4 py-3 rounded-lg border border-gray-500/30 text-gray-300 hover:bg-gray-500/10 transition-all"
-                  disabled={authLoading}
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  disabled={authLoading || !password}
-                  className="flex-1 px-4 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  {authLoading ? (
-                    <>
-                      <Loader2 size={16} className="animate-spin" />
-                      Đang kiểm tra...
-                    </>
-                  ) : (
-                    "Truy cập"
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
       {/* Main Content - Only show if authenticated */}
       {isAuthenticated && (
         <>
@@ -436,13 +370,20 @@ function AdminPage() {
                     <div>
                       <h1 className="text-2xl font-bold">Quản Lý Khách Hàng</h1>
                       <p className="text-gray-400 text-sm">
-                        Trang quản trị hệ thống
+                        Logged in as: {username}
                       </p>
                     </div>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-3">
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-all"
+                  >
+                    <LogOut size={16} />
+                    Logout
+                  </button>
                   <button
                     onClick={() => openAccountModal("view")}
                     className="flex items-center gap-2 px-4 py-2 rounded-lg border border-green-500/30 text-green-400 hover:bg-green-500/10 transition-all"

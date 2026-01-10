@@ -32,11 +32,25 @@ export interface Account {
   updatedAt: string;
 }
 
+export interface AdminUser {
+  _id?: ObjectId;
+  id: string;
+  username: string;
+  password: string; // hashed password
+  email?: string;
+  role: "admin" | "superadmin";
+  status: "active" | "inactive";
+  createdAt: string;
+  updatedAt: string;
+  lastLogin?: string;
+}
+
 class MongoDBService {
   private client: MongoClient;
   private db: Db | null = null;
   private customers: Collection<Customer> | null = null;
   private accounts: Collection<Account> | null = null;
+  private admins: Collection<AdminUser> | null = null;
   private connected: boolean = false;
 
   constructor() {
@@ -62,6 +76,7 @@ class MongoDBService {
       this.db = this.client.db(DB_NAME);
       this.customers = this.db.collection<Customer>("customers");
       this.accounts = this.db.collection<Account>("accounts");
+      this.admins = this.db.collection<AdminUser>("admins");
       this.connected = true;
 
       console.log("✅ Connected to MongoDB Atlas");
@@ -94,7 +109,7 @@ class MongoDBService {
   }
 
   private ensureConnected(): void {
-    if (!this.connected || !this.customers || !this.accounts) {
+    if (!this.connected || !this.customers || !this.accounts || !this.admins) {
       throw new Error("Database not connected. Call connect() first.");
     }
   }
@@ -347,6 +362,83 @@ class MongoDBService {
 
   private generateId(): string {
     return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  // ==================== ADMIN METHODS ====================
+
+  async getAdminByUsername(username: string): Promise<AdminUser | null> {
+    this.ensureConnected();
+    return await this.admins!.findOne({
+      username,
+      status: "active",
+    });
+  }
+
+  async getAdminById(id: string): Promise<AdminUser | null> {
+    this.ensureConnected();
+    return await this.admins!.findOne({
+      id,
+      status: "active",
+    });
+  }
+
+  async getAllAdmins(): Promise<AdminUser[]> {
+    this.ensureConnected();
+    return await this.admins!.find({ status: "active" }).toArray();
+  }
+
+  async insertAdmin(
+    admin: Omit<AdminUser, "id" | "createdAt" | "updatedAt">
+  ): Promise<AdminUser> {
+    this.ensureConnected();
+
+    const now = new Date().toISOString();
+    const newAdmin: AdminUser = {
+      id: this.generateId(),
+      ...admin,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    await this.admins!.insertOne(newAdmin);
+    return newAdmin;
+  }
+
+  async updateAdminLastLogin(id: string): Promise<AdminUser | null> {
+    this.ensureConnected();
+
+    const result = await this.admins!.findOneAndUpdate(
+      { id },
+      {
+        $set: {
+          lastLogin: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      },
+      { returnDocument: "after" }
+    );
+
+    return result || null;
+  }
+
+  async updateAdminPassword(
+    id: string,
+    hashedPassword: string
+  ): Promise<AdminUser | null> {
+    this.ensureConnected();
+
+    const result = await this.admins!.findOneAndUpdate(
+      { id },
+      {
+        $set: {
+          password: hashedPassword,
+          updatedAt: new Date().toISOString(),
+        },
+      },
+      { returnDocument: "after" }
+    );
+
+    return result || null;
   }
 }
 
