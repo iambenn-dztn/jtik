@@ -18,7 +18,7 @@ services:
       - key: ADMIN_PASSWORD
         generateValue: true
       - key: CLIENT_URL
-        value: https://jtik-client.onrender.com
+        value: https://www.jtik.io.vn
 
   # Frontend Static Site
   - type: web
