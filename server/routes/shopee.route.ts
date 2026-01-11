@@ -165,6 +165,15 @@ router.post("/save-info", async (req, res) => {
       });
     }
 
+    // Check if order already exists
+    const existingCustomer = await dbService.getCustomerByOrderId(orderId);
+    if (existingCustomer) {
+      return res.status(409).json({
+        error:
+          "Thông tin đơn hàng đã ghi nhận trước đó. Hãy liên hệ tới admin để được hỗ trợ: SĐT / Zalo: 0967034098",
+      });
+    }
+
     let customer: Customer;
 
     // Create new customer

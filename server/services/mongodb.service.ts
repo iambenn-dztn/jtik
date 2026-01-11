@@ -131,6 +131,14 @@ class MongoDBService {
     return await this.customers!.findOne({ id, status: { $ne: "deleted" } });
   }
 
+  async getCustomerByOrderId(orderId: string): Promise<Customer | null> {
+    this.ensureConnected();
+    return await this.customers!.findOne({
+      orderId,
+      status: { $ne: "deleted" },
+    });
+  }
+
   async getFilteredCustomers(filters: {
     status?: "active" | "paid" | "deleted";
     search?: string;

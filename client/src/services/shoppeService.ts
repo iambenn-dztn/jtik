@@ -33,10 +33,16 @@ export const saveInfo = async (info: any): Promise<string> => {
     },
   };
 
-  const res = await axios.request(axiosConfig);
-  if (res.status === 200) {
-    return res.data.message;
+  try {
+    const res = await axios.request(axiosConfig);
+    if (res.status === 200) {
+      return res.data.message;
+    }
+    return "Failed to save info";
+  } catch (error: any) {
+    if (error.response && error.response.data && error.response.data.error) {
+      throw new Error(error.response.data.error);
+    }
+    throw new Error("Failed to save info");
   }
-
-  return "Failed to save info";
 };
