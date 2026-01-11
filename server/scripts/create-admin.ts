@@ -1,4 +1,4 @@
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import { MongoClient } from "mongodb";
 import dotenv from "dotenv";
 
