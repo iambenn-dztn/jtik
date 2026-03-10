@@ -3,6 +3,7 @@ import express from "express";
 import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
+import { rateLimit } from "express-rate-limit";
 import { dbService } from "./services/mongodb.service.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -30,11 +31,47 @@ try {
 const app = express();
 const PORT = parseInt(process.env.PORT || "3001", 10);
 
+// Rate limiting configurations
+// General API rate limiter - 100 requests per 15 minutes
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  message: {
+    error: "Too many requests from this IP, please try again later.",
+  },
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+});
+
+// Auth rate limiter - 5 login attempts per 15 minutes
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // Limit each IP to 5 requests per windowMs
+  message: {
+    error:
+      "Too many authentication attempts from this IP, please try again later.",
+  },
+  skipSuccessfulRequests: true, // Don't count successful requests
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Transform link rate limiter - 20 requests per minute
+const transformLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 20, // Limit each IP to 20 requests per minute
+  message: {
+    error: "Too many link transformation requests, please slow down.",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 app.use(
   cors({
     origin: process.env.CLIENT_URL || "http://localhost:5173",
     credentials: true,
-  })
+  }),
 );
 app.use(express.json());
 
@@ -47,6 +84,17 @@ app.get("/api/health", (req, res) => {
   });
 });
 
+// Apply general rate limiter to all API routes
+app.use("/api", apiLimiter);
+
+// Apply stricter rate limiting to auth endpoints (before router)
+app.use("/api/auth/login", authLimiter);
+app.use("/api/auth/change-password", authLimiter);
+
+// Apply transform link rate limiter (before router)
+app.use("/api/shopee/transform-link", transformLimiter);
+
+// Mount routers
 app.use("/api/shopee", shopeeRouter);
 app.use("/api/auth", authRouter);
 
@@ -58,11 +106,11 @@ app.use(
     err: any,
     req: express.Request,
     res: express.Response,
-    next: express.NextFunction
+    next: express.NextFunction,
   ) => {
     console.error("Global error handler:", err);
     res.status(500).json({ error: "Internal server error" });
-  }
+  },
 );
 
 // Add unhandled rejection handlers
@@ -93,6 +141,6 @@ app.listen(PORT, "0.0.0.0", () => {
   console.log(`📡 API endpoint: http://localhost:${PORT}/api`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || "development"}`);
   console.log(
-    `🔗 CORS Origin: ${process.env.CLIENT_URL || "http://localhost:5173"}`
+    `🔗 CORS Origin: ${process.env.CLIENT_URL || "http://localhost:5173"}`,
   );
 });

@@ -176,7 +176,7 @@ function App() {
                 <textarea
                   value={urls}
                   onChange={(e) => setUrls(e.target.value)}
-                  placeholder="https://shopee.vn/product1&#10;https://shopee.vn/product2&#10;https://shopee.vn/product3"
+                  placeholder="https://s.shopee.vn/product1&#10;https://s.shopee.vn/product2&#10;https://s.shopee.vn/product3"
                   className="w-full bg-transparent border-none focus:ring-0 text-gray-900 px-4 py-2 text-base placeholder:text-orange-400/60 resize-none"
                   disabled={loading}
                   rows={5}
