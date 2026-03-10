@@ -3,23 +3,23 @@ import config from "../config/api";
 
 const BASE_URL = config.apiUrl + "/api/shopee";
 
-export const transformLink = async (link: string): Promise<string> => {
+export const transformLink = async (links: string[]): Promise<any> => {
   const url = config.endpoints.transformLink;
 
   const axiosConfig = {
     method: "post",
     url,
     data: {
-      link: link,
+      links: links,
     },
   };
 
   const res = await axios.request(axiosConfig);
   if (res.status === 200) {
-    return res.data.data.batchCustomLink[0].shortLink;
+    return res.data;
   }
 
-  return "";
+  throw new Error("Failed to transform links");
 };
 
 export const saveInfo = async (info: any): Promise<string> => {

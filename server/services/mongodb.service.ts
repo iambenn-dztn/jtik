@@ -5,7 +5,7 @@ const DB_NAME = "jtik";
 
 console.log(
   "🔗 MongoDB URI:",
-  MONGODB_URI.replace(/\/\/([^:]+):([^@]+)@/, "//$1:****@")
+  MONGODB_URI.replace(/\/\/([^:]+):([^@]+)@/, "//$1:****@"),
 ); // Log URI (hidden password)
 
 export interface Customer {
@@ -25,8 +25,7 @@ export interface Account {
   _id?: ObjectId;
   id: string;
   username: string;
-  password: string;
-  cookie?: string;
+  affiliateId: string;
   status: "active" | "inactive" | "deleted";
   createdAt: string;
   updatedAt: string;
@@ -86,7 +85,7 @@ class MongoDBService {
       const collections = await this.db.listCollections().toArray();
       console.log(
         "📦 Collections:",
-        collections.map((c) => c.name)
+        collections.map((c) => c.name),
       );
 
       // Count documents
@@ -167,7 +166,7 @@ class MongoDBService {
   }
 
   async insertCustomer(
-    customer: Omit<Customer, "id" | "status" | "createdAt" | "updatedAt">
+    customer: Omit<Customer, "id" | "status" | "createdAt" | "updatedAt">,
   ): Promise<Customer> {
     this.ensureConnected();
 
@@ -186,7 +185,7 @@ class MongoDBService {
 
   async updateCustomerStatus(
     id: string,
-    status: "active" | "paid" | "deleted"
+    status: "active" | "paid" | "deleted",
   ): Promise<Customer | null> {
     this.ensureConnected();
 
@@ -198,7 +197,7 @@ class MongoDBService {
           updatedAt: new Date().toISOString(),
         },
       },
-      { returnDocument: "after" }
+      { returnDocument: "after" },
     );
 
     return result || null;
@@ -214,7 +213,7 @@ class MongoDBService {
           status: "deleted",
           updatedAt: new Date().toISOString(),
         },
-      }
+      },
     );
 
     return result.modifiedCount > 0;
@@ -265,7 +264,6 @@ class MongoDBService {
 
   async getFirstActiveAccount(): Promise<Account | null> {
     this.ensureConnected();
-    console.log(1111);
     return await this.accounts!.findOne({
       status: "active",
     });
@@ -293,7 +291,7 @@ class MongoDBService {
   }
 
   async insertAccount(
-    account: Omit<Account, "id" | "status" | "createdAt" | "updatedAt">
+    account: Omit<Account, "id" | "status" | "createdAt" | "updatedAt">,
   ): Promise<Account> {
     this.ensureConnected();
 
@@ -312,7 +310,7 @@ class MongoDBService {
 
   async updateAccount(
     id: string,
-    updates: Partial<Omit<Account, "id" | "createdAt">>
+    updates: Partial<Omit<Account, "id" | "createdAt">>,
   ): Promise<Account | null> {
     this.ensureConnected();
 
@@ -324,7 +322,7 @@ class MongoDBService {
           updatedAt: new Date().toISOString(),
         },
       },
-      { returnDocument: "after" }
+      { returnDocument: "after" },
     );
 
     return result || null;
@@ -332,7 +330,7 @@ class MongoDBService {
 
   async updateAccountStatus(
     id: string,
-    status: "active" | "inactive" | "deleted"
+    status: "active" | "inactive" | "deleted",
   ): Promise<Account | null> {
     this.ensureConnected();
 
@@ -344,7 +342,7 @@ class MongoDBService {
           updatedAt: new Date().toISOString(),
         },
       },
-      { returnDocument: "after" }
+      { returnDocument: "after" },
     );
 
     return result || null;
@@ -360,7 +358,7 @@ class MongoDBService {
           status: "deleted",
           updatedAt: new Date().toISOString(),
         },
-      }
+      },
     );
 
     return result.modifiedCount > 0;
@@ -396,7 +394,7 @@ class MongoDBService {
   }
 
   async insertAdmin(
-    admin: Omit<AdminUser, "id" | "createdAt" | "updatedAt">
+    admin: Omit<AdminUser, "id" | "createdAt" | "updatedAt">,
   ): Promise<AdminUser> {
     this.ensureConnected();
 
@@ -423,7 +421,7 @@ class MongoDBService {
           updatedAt: new Date().toISOString(),
         },
       },
-      { returnDocument: "after" }
+      { returnDocument: "after" },
     );
 
     return result || null;
@@ -431,7 +429,7 @@ class MongoDBService {
 
   async updateAdminPassword(
     id: string,
-    hashedPassword: string
+    hashedPassword: string,
   ): Promise<AdminUser | null> {
     this.ensureConnected();
 
@@ -443,7 +441,7 @@ class MongoDBService {
           updatedAt: new Date().toISOString(),
         },
       },
-      { returnDocument: "after" }
+      { returnDocument: "after" },
     );
 
     return result || null;

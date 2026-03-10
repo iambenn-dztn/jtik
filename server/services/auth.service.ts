@@ -26,7 +26,7 @@ export const hashPassword = async (password: string): Promise<string> => {
  */
 export const comparePassword = async (
   password: string,
-  hash: string
+  hash: string,
 ): Promise<boolean> => {
   return bcrypt.compare(password, hash);
 };
@@ -35,7 +35,7 @@ export const comparePassword = async (
  * Get admin by username
  */
 export const getAdminByUsername = async (
-  username: string
+  username: string,
 ): Promise<Admin | null> => {
   try {
     await client.connect();
@@ -57,7 +57,7 @@ export const getAdminByUsername = async (
 export const createAdmin = async (
   username: string,
   password: string,
-  role: string = "admin"
+  role: string = "admin",
 ): Promise<Admin | null> => {
   try {
     await client.connect();
@@ -95,7 +95,7 @@ export const createAdmin = async (
  */
 export const addRefreshToken = async (
   username: string,
-  refreshToken: string
+  refreshToken: string,
 ): Promise<boolean> => {
   try {
     await client.connect();
@@ -104,7 +104,7 @@ export const addRefreshToken = async (
 
     await adminsCollection.updateOne(
       { username },
-      { $push: { refreshTokens: refreshToken } }
+      { $push: { refreshTokens: refreshToken } },
     );
 
     return true;
@@ -121,7 +121,7 @@ export const addRefreshToken = async (
  */
 export const removeRefreshToken = async (
   username: string,
-  refreshToken: string
+  refreshToken: string,
 ): Promise<boolean> => {
   try {
     await client.connect();
@@ -130,7 +130,7 @@ export const removeRefreshToken = async (
 
     await adminsCollection.updateOne(
       { username },
-      { $pull: { refreshTokens: refreshToken } }
+      { $pull: { refreshTokens: refreshToken } },
     );
 
     return true;
@@ -147,7 +147,7 @@ export const removeRefreshToken = async (
  */
 export const verifyRefreshTokenExists = async (
   username: string,
-  refreshToken: string
+  refreshToken: string,
 ): Promise<boolean> => {
   try {
     await client.connect();
@@ -162,6 +162,34 @@ export const verifyRefreshTokenExists = async (
     return !!admin;
   } catch (error) {
     console.error("Error verifying refresh token:", error);
+    return false;
+  } finally {
+    await client.close();
+  }
+};
+
+/**
+ * Update admin password
+ */
+export const updatePassword = async (
+  username: string,
+  newPassword: string,
+): Promise<boolean> => {
+  try {
+    await client.connect();
+    const db = client.db("jtik");
+    const adminsCollection = db.collection<Admin>("admins");
+
+    const hashedPassword = await hashPassword(newPassword);
+
+    const result = await adminsCollection.updateOne(
+      { username },
+      { $set: { password: hashedPassword } },
+    );
+
+    return result.modifiedCount > 0;
+  } catch (error) {
+    console.error("Error updating password:", error);
     return false;
   } finally {
     await client.close();

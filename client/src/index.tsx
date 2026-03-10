@@ -8,13 +8,13 @@ import * as authService from "./services/authService";
 
 function AppRoot() {
   const [isAuthenticated, setIsAuthenticated] = useState(
-    authService.isAuthenticated()
+    authService.isAuthenticated(),
   );
 
   const handleLoginSuccess = (
     accessToken: string,
     refreshToken: string,
-    username: string
+    username: string,
   ) => {
     setIsAuthenticated(true);
   };
@@ -42,5 +42,5 @@ const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
     <AppRoot />
-  </React.StrictMode>
+  </React.StrictMode>,
 );

@@ -19,10 +19,10 @@ import React, { useState } from "react";
 import { saveInfo, transformLink } from "./services/shoppeService";
 
 function App() {
-  const [url, setUrl] = useState("");
+  const [urls, setUrls] = useState(""); // Changed to textarea value
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<string | null>(null);
+  const [results, setResults] = useState<any[]>([]); // Changed to array of results
 
   // Form state
   const [phone, setPhone] = useState("");
@@ -34,26 +34,45 @@ function App() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [showSnackbar, setShowSnackbar] = useState(false);
 
   const handleProcessLink = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!url || !url.startsWith("http")) {
+
+    // Parse textarea into array of links (split by newline)
+    const linkArray = urls
+      .split("\n")
+      .map((link) => link.trim())
+      .filter((link) => link.length > 0);
+
+    if (linkArray.length === 0) {
+      setError("Vui lòng nhập ít nhất một link");
+      return;
+    }
+
+    // Validate that all links start with http
+    const invalidLinks = linkArray.filter((link) => !link.startsWith("http"));
+    if (invalidLinks.length > 0) {
       setError(
-        "Vui lòng nhập một URL hợp lệ (bắt đầu bằng http:// hoặc https://)"
+        `${invalidLinks.length} link không hợp lệ. Mỗi link phải bắt đầu bằng http:// hoặc https://`,
       );
       return;
     }
 
-    const transformedLink = await transformLink(url);
-    console.log("Processing URL:", transformedLink);
-
     setLoading(true);
     setError(null);
-    setResult(null);
+    setResults([]);
 
     try {
-      setResult(transformedLink);
-      setUrl("");
+      const response = await transformLink(linkArray);
+      console.log("Transform response:", response);
+
+      if (response.success && response.data) {
+        setResults(response.data);
+        setUrls(""); // Clear textarea after success
+      } else {
+        setError("Không thể chuyển đổi link");
+      }
     } catch (err: any) {
       setError(err.message || "Đã xảy ra lỗi trong quá trình xử lý liên kết.");
     } finally {
@@ -61,13 +80,16 @@ function App() {
     }
   };
 
-  const handleCopy = () => {
-    if (!result) return;
-    console.log("Opening URL:", result);
+  const handleCopy = (link: string) => {
+    if (!link) return;
+    console.log("Opening URL:", link);
+    window.location.href = link;
+  };
 
-    const shopeeLink = result;
-
-    window.location.href = shopeeLink;
+  const handleCopyToClipboard = (link: string) => {
+    navigator.clipboard.writeText(link);
+    setShowSnackbar(true);
+    setTimeout(() => setShowSnackbar(false), 2000);
   };
 
   const handleBankInfoSubmit = async (e: React.FormEvent) => {
@@ -125,7 +147,7 @@ function App() {
       </div>
 
       {/* Vùng Hành Động Chính */}
-      <section className="relative pt-32 pb-20 px-6">
+      <section className="relative pt-20 pb-20 px-6">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-4xl h-[500px] bg-blue-600/10 blur-[120px] -z-10 rounded-full pointer-events-none"></div>
 
         <div className="max-w-3xl mx-auto text-center">
@@ -140,32 +162,43 @@ function App() {
           <form onSubmit={handleProcessLink} className="relative mb-12">
             <div className="relative group">
               <div className="absolute -inset-1 bg-gradient-to-r from-orange-500/50 to-red-500/50 rounded-2xl blur-lg opacity-20 group-focus-within:opacity-100 transition duration-500"></div>
-              <div className="relative flex items-center bg-gradient-to-r from-orange-100 to-orange-50 p-2 rounded-2xl border-orange-300/40 focus-within:border-orange-500/60 transition-all shadow-lg">
-                <div className="pl-4 text-orange-600">
-                  <LinkIcon size={22} />
+              <div className="relative flex flex-col bg-gradient-to-r from-orange-100 to-orange-50 p-2 rounded-2xl border-orange-300/40 focus-within:border-orange-500/60 transition-all shadow-lg">
+                <div className="flex items-center">
+                  <div className="pl-4 text-orange-600">
+                    <LinkIcon size={22} />
+                  </div>
+                  <div className="flex-1 px-4 py-2">
+                    <p className="text-xs text-orange-600 font-semibold">
+                      Nhập link sản phẩm (mỗi link một dòng)
+                    </p>
+                  </div>
                 </div>
-                <input
-                  type="text"
-                  value={url}
-                  onChange={(e) => setUrl(e.target.value)}
-                  placeholder="Dán link sản phẩm tại đây..."
-                  className="w-full bg-transparent border-none focus:ring-0 text-gray-900 px-4 py-4 text-lg placeholder:text-orange-400/60"
+                <textarea
+                  value={urls}
+                  onChange={(e) => setUrls(e.target.value)}
+                  placeholder="https://shopee.vn/product1&#10;https://shopee.vn/product2&#10;https://shopee.vn/product3"
+                  className="w-full bg-transparent border-none focus:ring-0 text-gray-900 px-4 py-2 text-base placeholder:text-orange-400/60 resize-none"
                   disabled={loading}
+                  rows={5}
                 />
-                <button
-                  type="submit"
-                  disabled={loading || !url}
-                  className="bg-orange-500 text-white font-bold px-8 py-4 rounded-xl hover:bg-orange-600 transition-all flex items-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 shadow-xl shadow-orange-500/30"
-                >
-                  {loading ? (
-                    <Loader2 className="animate-spin" size={22} />
-                  ) : (
-                    <Wand2 size={22} />
-                  )}
-                  <span className="hidden sm:inline font-bold uppercase tracking-wider text-sm text-nowrap">
-                    Chuyển Hóa
-                  </span>
-                </button>
+                <div className="flex justify-end p-2">
+                  <button
+                    type="submit"
+                    disabled={loading || !urls.trim()}
+                    className="bg-orange-500 text-white font-bold px-8 py-4 rounded-xl hover:bg-orange-600 transition-all flex items-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 shadow-xl shadow-orange-500/30"
+                  >
+                    {loading ? (
+                      <Loader2 className="animate-spin" size={22} />
+                    ) : (
+                      <Wand2 size={22} />
+                    )}
+                    <span className="font-bold uppercase tracking-wider text-sm">
+                      Chuyển Hóa{" "}
+                      {urls.split("\n").filter((l) => l.trim()).length > 0 &&
+                        `(${urls.split("\n").filter((l) => l.trim()).length})`}
+                    </span>
+                  </button>
+                </div>
               </div>
             </div>
             {error && (
@@ -178,43 +211,85 @@ function App() {
           {/* Vùng Kết Quả */}
           <div
             className={`transition-all duration-700 transform ${
-              result
+              results.length > 0
                 ? "opacity-100 translate-y-0 scale-100"
                 : "opacity-0 translate-y-4 scale-95 pointer-events-none absolute"
             }`}
           >
-            {result && (
-              <div className="glass p-6 rounded-3xl border-blue-500/30 relative overflow-hidden group">
+            {results.length > 0 && (
+              <div className="glass p-6 rounded-3xl border-blue-500/30 relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-purple-500"></div>
                 <button
-                  onClick={() => setResult(null)}
+                  onClick={() => setResults([])}
                   className="absolute top-4 right-4 text-zinc-500 hover:text-white transition-colors"
                 >
                   <X size={20} />
                 </button>
 
-                <div className="flex flex-col items-center text-center">
+                <div className="flex flex-col items-center text-center mb-4">
                   <div className="p-3 bg-blue-500/10 rounded-2xl text-blue-400 mb-4">
                     <Share2 size={32} />
                   </div>
+                  <h3 className="text-xl font-bold text-white mb-2">
+                    ✅ Đã chuyển đổi {results.filter((r) => r.shortLink).length}
+                    /{results.length} link
+                  </h3>
+                </div>
 
-                  <div className="w-full bg-black/50 border border-white/5 p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
-                    <div className="text-left overflow-hidden w-full">
-                      <p className="text-[10px] text-blue-400 font-bold uppercase tracking-widest mb-1">
-                        Liên Kết Chuyển Đổi Mới
-                      </p>
-                      <p className="text-lg font-mono text-white truncate">
-                        jtik.io/{result}
-                      </p>
-                    </div>
-                    <button
-                      onClick={handleCopy}
-                      className="whitespace-nowrap bg-blue-500 hover:bg-blue-400 text-white px-6 py-3 rounded-xl flex items-center gap-2 font-bold transition-all w-full sm:w-auto justify-center"
+                <div className="space-y-3 max-h-[500px] overflow-y-auto">
+                  {results.map((result, index) => (
+                    <div
+                      key={index}
+                      className="w-full bg-black/50 border border-white/5 p-4 rounded-2xl"
                     >
-                      <ShoppingCart size={18} />
-                      Mua Ngay
-                    </button>
-                  </div>
+                      {result.shortLink ? (
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                          <div className="text-left overflow-hidden w-full">
+                            <p className="text-[10px] text-blue-400 font-bold uppercase tracking-widest mb-1">
+                              Link #{index + 1}
+                            </p>
+                            <p className="text-xs text-gray-400 truncate mb-2">
+                              {result.originalLink}
+                            </p>
+                            <p className="text-sm font-mono text-white truncate">
+                              {result.shortLink}
+                            </p>
+                          </div>
+                          <div className="flex gap-2 w-full sm:w-auto">
+                            <button
+                              onClick={() =>
+                                handleCopyToClipboard(result.shortLink)
+                              }
+                              className="flex-1 sm:flex-none bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded-xl flex items-center gap-2 font-bold transition-all text-sm justify-center"
+                              title="Copy link"
+                            >
+                              <LinkIcon size={16} />
+                              Copy
+                            </button>
+                            <button
+                              onClick={() => handleCopy(result.shortLink)}
+                              className="flex-1 sm:flex-none bg-blue-500 hover:bg-blue-400 text-white px-4 py-2 rounded-xl flex items-center gap-2 font-bold transition-all text-sm justify-center"
+                            >
+                              <ShoppingCart size={16} />
+                              Mua
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-left">
+                          <p className="text-[10px] text-red-400 font-bold uppercase tracking-widest mb-1">
+                            Link #{index + 1} - Lỗi
+                          </p>
+                          <p className="text-xs text-gray-400 truncate mb-1">
+                            {result.originalLink}
+                          </p>
+                          <p className="text-sm text-red-400">
+                            {result.error || "Không thể chuyển đổi"}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
@@ -222,15 +297,8 @@ function App() {
         </div>
       </section>
 
-      {/* Trạng Thái Trống */}
-      {!loading && !result && (
-        <div className="flex flex-col items-center justify-center pt-10 text-zinc-700 opacity-50">
-          <p className="text-sm tracking-widest uppercase font-bold">...</p>
-        </div>
-      )}
-
       <footer className="mt-20 border-t border-white/5 py-10 text-center text-zinc-600 text-[10px] uppercase tracking-[0.2em]">
-        <p>&copy; Copyright &bull; JTik 2026</p>
+        <p>&copy; Copyright &bull; Just J 2026</p>
       </footer>
 
       {/* Bank Information Modal */}
@@ -485,6 +553,27 @@ function App() {
               <X size={20} />
               Đóng
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Snackbar for Copy Success */}
+      {showSnackbar && (
+        <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[100] animate-bounce-in">
+          <div
+            className="bg-teal-100 border-t-4 border-teal-500 rounded-b text-teal-900 px-4 py-3 shadow-md"
+            role="alert"
+          >
+            <div className="flex items-center">
+              <div className="py-1">
+                <div className="fill-current h-6 w-6 text-teal-500 mr-4">
+                  <Check size={24} strokeWidth={3} />
+                </div>
+              </div>
+              <div>
+                <p className="font-bold">Đã copy thành công!</p>
+              </div>
+            </div>
           </div>
         </div>
       )}

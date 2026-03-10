@@ -37,11 +37,10 @@ interface Customer {
 interface Account {
   id: string;
   username: string;
-  password: string;
+  affiliateId: string;
   status: "active" | "inactive" | "deleted";
   createdAt: string;
   updatedAt: string;
-  deletedAt?: string;
 }
 
 interface Statistics {
@@ -74,11 +73,21 @@ function AdminPage() {
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
   const [accountForm, setAccountForm] = useState({
     username: "",
-    password: "",
+    affiliateId: "",
   });
   const [accountModalMode, setAccountModalMode] = useState<
     "view" | "add" | "edit"
   >("view");
+
+  // Change Password states
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
 
   // Filter and Search states
   const [statusFilter, setStatusFilter] = useState<
@@ -128,7 +137,7 @@ function AdminPage() {
 
   const updateCustomerStatus = async (
     id: string,
-    status: "active" | "paid" | "deleted"
+    status: "active" | "paid" | "deleted",
   ) => {
     try {
       const response = await authService.authenticatedFetch(
@@ -139,7 +148,7 @@ function AdminPage() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ status }),
-        }
+        },
       );
 
       if (response.ok) {
@@ -160,7 +169,7 @@ function AdminPage() {
           `${config.endpoints.customers}/${id}`,
           {
             method: "DELETE",
-          }
+          },
         );
 
         if (response.ok) {
@@ -178,7 +187,7 @@ function AdminPage() {
   const fetchAccounts = async () => {
     try {
       const response = await authService.authenticatedFetch(
-        config.endpoints.accounts
+        config.endpoints.accounts,
       );
       const result = await response.json();
 
@@ -210,7 +219,7 @@ function AdminPage() {
         },
         body: JSON.stringify({
           username: accountForm.username,
-          password: accountForm.password,
+          affiliateId: accountForm.affiliateId,
         }),
       });
 
@@ -219,7 +228,7 @@ function AdminPage() {
       if (response.ok && result.success) {
         alert(result.message || "Account saved successfully!");
         setShowAccountModal(false);
-        setAccountForm({ username: "", password: "" });
+        setAccountForm({ username: "", affiliateId: "" });
         setSelectedAccount(null);
         fetchAccounts();
       } else {
@@ -233,7 +242,7 @@ function AdminPage() {
 
   const updateAccountStatus = async (
     id: string,
-    status: "active" | "inactive" | "deleted"
+    status: "active" | "inactive" | "deleted",
   ) => {
     try {
       const response = await authService.authenticatedFetch(
@@ -244,7 +253,7 @@ function AdminPage() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ status }),
-        }
+        },
       );
 
       if (response.ok) {
@@ -264,7 +273,7 @@ function AdminPage() {
           `${config.endpoints.accounts}/${id}`,
           {
             method: "DELETE",
-          }
+          },
         );
 
         if (response.ok) {
@@ -280,17 +289,17 @@ function AdminPage() {
 
   const openAccountModal = (
     mode: "view" | "add" | "edit",
-    account?: Account
+    account?: Account,
   ) => {
     setAccountModalMode(mode);
     setSelectedAccount(account || null);
 
     if (mode === "add") {
-      setAccountForm({ username: "", password: "" });
+      setAccountForm({ username: "", affiliateId: "" });
     } else if (mode === "edit" && account) {
       setAccountForm({
         username: account.username,
-        password: account.password,
+        affiliateId: account.affiliateId,
       });
     }
 
@@ -339,6 +348,43 @@ function AdminPage() {
     navigate("/admin/login");
   };
 
+  // Handle password change
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError("");
+    setPasswordSuccess(false);
+
+    // Validate
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordError("Mật khẩu mới không khớp");
+      return;
+    }
+
+    if (passwordForm.newPassword.length < 6) {
+      setPasswordError("Mật khẩu mới phải có ít nhất 6 ký tự");
+      return;
+    }
+
+    try {
+      await authService.changePassword(
+        passwordForm.currentPassword,
+        passwordForm.newPassword,
+      );
+      setPasswordSuccess(true);
+      setPasswordForm({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+      setTimeout(() => {
+        setShowPasswordModal(false);
+        setPasswordSuccess(false);
+      }, 2000);
+    } catch (error: any) {
+      setPasswordError(error.message || "Đổi mật khẩu thất bại");
+    }
+  };
+
   // Initial load when authenticated
   useEffect(() => {
     if (isAuthenticated) {
@@ -383,6 +429,13 @@ function AdminPage() {
                   >
                     <LogOut size={16} />
                     Logout
+                  </button>
+                  <button
+                    onClick={() => setShowPasswordModal(true)}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg border border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 transition-all"
+                  >
+                    <Lock size={16} />
+                    Đổi mật khẩu
                   </button>
                   <button
                     onClick={() => openAccountModal("view")}
@@ -489,7 +542,7 @@ function AdminPage() {
                     value={statusFilter}
                     onChange={(e) =>
                       setStatusFilter(
-                        e.target.value as "all" | "active" | "paid" | "deleted"
+                        e.target.value as "all" | "active" | "paid" | "deleted",
                       )
                     }
                     className="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-blue-500 focus:outline-none"
@@ -679,7 +732,7 @@ function AdminPage() {
                             <div className="flex items-center gap-1 text-gray-500 text-sm">
                               <Calendar size={14} />
                               {new Date(customer.createdAt).toLocaleDateString(
-                                "vi-VN"
+                                "vi-VN",
                               )}
                             </div>
                           </td>
@@ -788,6 +841,7 @@ function AdminPage() {
                         <thead>
                           <tr className="text-gray-400 border-b border-gray-700">
                             <th className="text-left p-3">Username</th>
+                            <th className="text-left p-3">Affiliate ID</th>
                             <th className="text-left p-3">Status</th>
                             <th className="text-left p-3">Created</th>
                             <th className="text-left p-3">Actions</th>
@@ -802,14 +856,17 @@ function AdminPage() {
                               <td className="p-3 text-white font-medium">
                                 {account.username}
                               </td>
+                              <td className="p-3 text-gray-300 font-mono text-sm">
+                                {account.affiliateId}
+                              </td>
                               <td className="p-3">
                                 <span
                                   className={`px-2 py-1 rounded-full text-xs font-medium ${
                                     account.status === "active"
                                       ? "bg-green-500/20 text-green-400 border border-green-500/30"
                                       : account.status === "inactive"
-                                      ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"
-                                      : "bg-red-500/20 text-red-400 border border-red-500/30"
+                                        ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"
+                                        : "bg-red-500/20 text-red-400 border border-red-500/30"
                                   }`}
                                 >
                                   {account.status}
@@ -817,7 +874,7 @@ function AdminPage() {
                               </td>
                               <td className="p-3 text-gray-400">
                                 {new Date(account.createdAt).toLocaleDateString(
-                                  "vi-VN"
+                                  "vi-VN",
                                 )}
                               </td>
                               <td className="p-3">
@@ -839,7 +896,7 @@ function AdminPage() {
                                             account.id,
                                             account.status === "active"
                                               ? "inactive"
-                                              : "active"
+                                              : "active",
                                           )
                                         }
                                         className={`transition-colors p-1 rounded ${
@@ -920,19 +977,19 @@ function AdminPage() {
 
                     <div>
                       <label className="block text-gray-300 text-sm font-medium mb-2">
-                        Password
+                        Affiliate ID
                       </label>
                       <input
                         type="text"
-                        value={accountForm.password}
+                        value={accountForm.affiliateId}
                         onChange={(e) =>
                           setAccountForm((prev) => ({
                             ...prev,
-                            password: e.target.value,
+                            affiliateId: e.target.value,
                           }))
                         }
-                        className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-blue-500 focus:outline-none"
-                        placeholder="Nhập password..."
+                        className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-blue-500 focus:outline-none font-mono"
+                        placeholder="Nhập affiliate ID (VD: 17313710081)..."
                         required={accountModalMode === "add"}
                       />
                     </div>
@@ -958,6 +1015,144 @@ function AdminPage() {
                   </form>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Change Password Modal */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-gray-800 rounded-xl border border-gray-700 max-w-md w-full">
+            {/* Modal Header */}
+            <div className="p-6 border-b border-gray-700">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  <Lock size={24} className="text-yellow-400" />
+                  Đổi mật khẩu
+                </h2>
+                <button
+                  onClick={() => {
+                    setShowPasswordModal(false);
+                    setPasswordForm({
+                      currentPassword: "",
+                      newPassword: "",
+                      confirmPassword: "",
+                    });
+                    setPasswordError("");
+                    setPasswordSuccess(false);
+                  }}
+                  className="text-gray-400 hover:text-white transition-colors p-1"
+                >
+                  <XCircle size={24} />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6">
+              <form onSubmit={handlePasswordChange} className="space-y-4">
+                <div>
+                  <label className="block text-gray-300 text-sm font-medium mb-2">
+                    Mật khẩu hiện tại
+                  </label>
+                  <input
+                    type="password"
+                    value={passwordForm.currentPassword}
+                    onChange={(e) =>
+                      setPasswordForm((prev) => ({
+                        ...prev,
+                        currentPassword: e.target.value,
+                      }))
+                    }
+                    className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-yellow-500 focus:outline-none"
+                    placeholder="Nhập mật khẩu hiện tại..."
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-gray-300 text-sm font-medium mb-2">
+                    Mật khẩu mới
+                  </label>
+                  <input
+                    type="password"
+                    value={passwordForm.newPassword}
+                    onChange={(e) =>
+                      setPasswordForm((prev) => ({
+                        ...prev,
+                        newPassword: e.target.value,
+                      }))
+                    }
+                    className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-yellow-500 focus:outline-none"
+                    placeholder="Nhập mật khẩu mới (tối thiểu 6 ký tự)..."
+                    required
+                    minLength={6}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-gray-300 text-sm font-medium mb-2">
+                    Xác nhận mật khẩu mới
+                  </label>
+                  <input
+                    type="password"
+                    value={passwordForm.confirmPassword}
+                    onChange={(e) =>
+                      setPasswordForm((prev) => ({
+                        ...prev,
+                        confirmPassword: e.target.value,
+                      }))
+                    }
+                    className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-yellow-500 focus:outline-none"
+                    placeholder="Nhập lại mật khẩu mới..."
+                    required
+                    minLength={6}
+                  />
+                </div>
+
+                {/* Error Message */}
+                {passwordError && (
+                  <div className="p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-sm">
+                    {passwordError}
+                  </div>
+                )}
+
+                {/* Success Message */}
+                {passwordSuccess && (
+                  <div className="p-3 bg-green-500/20 border border-green-500/30 rounded-lg text-green-400 text-sm flex items-center gap-2">
+                    <CheckCircle size={16} />
+                    Đổi mật khẩu thành công!
+                  </div>
+                )}
+
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="submit"
+                    disabled={passwordSuccess}
+                    className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Lock size={16} />
+                    Đổi mật khẩu
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowPasswordModal(false);
+                      setPasswordForm({
+                        currentPassword: "",
+                        newPassword: "",
+                        confirmPassword: "",
+                      });
+                      setPasswordError("");
+                      setPasswordSuccess(false);
+                    }}
+                    className="px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
+                  >
+                    Hủy
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         </div>

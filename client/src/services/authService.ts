@@ -22,7 +22,7 @@ interface RefreshResponse {
  */
 export async function login(
   username: string,
-  password: string
+  password: string,
 ): Promise<LoginResponse> {
   const response = await fetch(`${API_BASE_URL}/auth/login`, {
     method: "POST",
@@ -66,7 +66,7 @@ export async function logout(refreshToken: string): Promise<void> {
  * Refresh access token using refresh token
  */
 export async function refreshAccessToken(
-  refreshToken: string
+  refreshToken: string,
 ): Promise<string> {
   const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
     method: "POST",
@@ -139,7 +139,7 @@ export function getUsername(): string | null {
  */
 export async function authenticatedFetch(
   url: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
 ): Promise<Response> {
   let accessToken = getAccessToken();
 
@@ -184,4 +184,28 @@ export async function authenticatedFetch(
   }
 
   return response;
+}
+
+/**
+ * Change password for current admin
+ */
+export async function changePassword(
+  currentPassword: string,
+  newPassword: string,
+): Promise<void> {
+  const response = await authenticatedFetch(
+    `${API_BASE_URL}/auth/change-password`,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ currentPassword, newPassword }),
+    },
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "Failed to change password");
+  }
 }

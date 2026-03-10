@@ -7,10 +7,6 @@ import { fileURLToPath } from "url";
 import XLSX from "xlsx";
 import { Customer, dbService } from "../services/mongodb.service.js";
 import {
-  refreshCookie,
-  getCookie,
-} from "../services/shoppee-services.service.js";
-import {
   authenticateToken,
   requireAdmin,
 } from "../middleware/auth.middleware.js";
@@ -57,84 +53,84 @@ router.post("/admin/auth", (req, res) => {
   }
 });
 
-// Public endpoint - no auth required
 router.post("/transform-link", async (req, res) => {
-  console.log("Received transform-link request1");
-  const { link } = req.body;
+  console.log("=".repeat(50));
+  console.log("📥 Received transform-link request");
 
-  let data = `{"operationName":"batchGetCustomLink","query":"\\n    query batchGetCustomLink($linkParams: [CustomLinkParam!], $sourceCaller: SourceCaller){\\n      batchCustomLink(linkParams: $linkParams, sourceCaller: $sourceCaller){\\n        shortLink\\n        longLink\\n        failCode\\n      }\\n    }\\n    ","variables":{"linkParams":[{"originalLink":"${link}","advancedLinkParams":{"subId1":"j99"}}],"sourceCaller":"CUSTOM_LINK_CALLER"}}`;
+  const { links } = req.body; // Now expecting an array of links
 
-  const makeRequest = async (cookieValue: string) => {
-    const config = {
-      method: "post",
-      maxBodyLength: Infinity,
-      url: "https://affiliate.shopee.vn/api/v3/gql?q=batchCustomLink",
-      headers: {
-        accept: "application/json, text/plain, */*",
-        "accept-language": "en-US,en;q=0.9",
-        "af-ac-enc-dat": "70d1b1fcf1abbeb6",
-        "af-ac-enc-sz-token":
-          "9rsD0YiBuBShnVw0xLDBWA==|WzZWuGXyCumpIkv9q/S9uqE3P9arVcgB/wQ+rnHQ9das4axOQWjJ3lyRjrOxxIP3x/5Pz6+aDYo1AA==|Msg7T/CPlPe6+h6v|08|3",
-        "affiliate-program-type": "1",
-        "content-type": "application/json; charset=UTF-8",
-        "csrf-token": "cJJuDdPv-Bbq9P9cp9LUbOWcW18n7oJtMiSg",
-        origin: "https://affiliate.shopee.vn",
-        priority: "u=1, i",
-        referer: "https://affiliate.shopee.vn/offer/custom_link",
-        "sec-ch-ua":
-          '"Google Chrome";v="143", "Chromium";v="143", "Not A(Brand";v="24"',
-        "sec-ch-ua-mobile": "?0",
-        "sec-ch-ua-platform": '"macOS"',
-        "sec-fetch-dest": "empty",
-        "sec-fetch-mode": "cors",
-        "sec-fetch-site": "same-origin",
-        "user-agent":
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
-        "x-sap-ri": "9e5756693f02ea40b2ae43310501c220169acec1a1b5bf439023",
-        "x-sap-sec":
-          "LJL/msfDowfN4xIz5wlz5xvzuwmr5ilz7wyd5jBzOplV5ZlzFwmx5jIzUwlR5aszK2mZ5xvzMwlJ5bxz+wmO5C/zJplw5bIzcuyW5YDzWwl25CKz/wlr5xWzF2l65jnz92yz5GDzNwmI5gEz4wmj5Z/zDpms5gxzrplp5jDz8wyN5GxzLwmP5wlzjwxz5wlz5wjTUona5wlz0XwhUDRX52lz5wlzVI7n+EUz52lzpwCz5xRqfjWz5YEsdwxz5wlzWmKz5jls5wmhjnIm5wlzf0HD7wlz5zQm5wlA5plz3J4Go2lz5ygw5ulzewCz5wlzK8e0XFqd5wlzQAZFiev65ulz5wmWVsDy5wl1Xpynw5r9zzNc5bVu52lz5wml+ull5wzz5ulz5CpGwZQq75uRacjq5wltjmKz5wyjr1K36RuB8qm+1SgaWXWO46IvXTgAtCqPlaDsjEikDir7ZTVVM2Svg6OOkuc9uB8bZwIPy6YSy/jvwo9cs/DJYw7Nohmm7CagTdFK1fIA+6hONU4JaCE4ZoGJhlXtkL/JdtR/b48e8GyfEDnikkP26tgTIfNLt6IBMdP7yWb8lcC1STrZaWsYB4rMb7C+/5b2jrlQtBavMoa/loTiVBIpigi8JkMZH+ab+8RDG2WA7lhU03BBm1PwAWlksreVDr6+JG8R/2hVeEsV9hZI2l8XT4EwKW6p5iH8jCHL+JwPizOgf4+IPcbcPdd85wQz5wzRxAhiCupZT2Dz5wyDIh78Vulz5wmWjQj2obJuGvq14Gr64ffebbnYEhk0pejt2bDJnN4ICmlXvMU2nZme7aPWo0zd/09uZSov7sW6Xbrriqw7qzbHqTd1MCZMfgkVIWiDB8O3jYJZY5y8BN0kypLHvppqxWuBq8vQXK+oZ6fGnFu40foBm/uxOR18tuNqWaQLsb/QX5d2eSLqumRTJvt/OqQcrRMwGeMGe6so96aQMOb46XZR5wlz4wlz5fmzVbBY5wlz7l5sq44Yh6JMClosgplz5wlz5wlz5wlzd2lz5Yiz9R768sIpHfSob5iv+nCWA+TMVyeROC5LAJYlfEfCoW5/1M5x7Yfkx+4OlFLMr/5LTmdtmEfth8dHbr+vR0QcnWR7Akxz5wlz5wlz5wlzrplz5Ci6qJoyj/WaoFycxNbx2qchtfszSwlz5ZApqOj9FtPiKD2cuj+8HYJcGI5BFrI+NCjHbOobgLZaol0Jbplz5wlH5wlz3DR6ar0CHVM6CJNcDjBBPUNouBjtAhgxol6Bbd7Y0oEIGOq4D4EQQZwOqmAVFtC17PkOb4oZEqIz5wlzJwlz5jYw9IhPt0Fo5wlz5wlz5wlu5wlzrb134n7TWPmk6j3ZzjnBm6qbgf8YUmLYK+zubpQz5wmAldigxWKXKuQz5wlkoegd6UFN62lz5wl=",
-        "x-sz-sdk-version": "1.12.21",
-        Cookie: cookieValue,
-      },
-      data: data,
-    };
-    return axios.request(config);
-  };
+  if (!links || !Array.isArray(links) || links.length === 0) {
+    return res.status(400).json({
+      error: "Links array is required and must not be empty",
+    });
+  }
+
+  console.log(`🔗 Processing ${links.length} link(s)`);
 
   try {
-    // First attempt with existing cookies from database
-    const cookie = await getCookie();
-    console.log("Using cookies from database");
-    const response = await makeRequest(cookie);
-    console.log("response", JSON.stringify(response.data));
-    if (response.data.errors || response.data.error) {
-      throw new Error("Shopee API returned errors");
+    // Get active account to retrieve affiliateId
+    const activeAccount = await dbService.getFirstActiveAccount();
+
+    if (!activeAccount) {
+      return res.status(500).json({
+        error: "No active account found. Please configure an account first.",
+      });
     }
-    res.json({ data: response.data.data });
-  } catch (error) {
-    console.error("Shopee API error, attempting to refresh cookies:", error);
 
-    try {
-      // Refresh cookies and retry
-      console.log("🔄 Refreshing cookies...");
-      const newCookies = await refreshCookie();
-      console.log("✅ Cookies refreshed and saved to database");
+    const affiliateId = activeAccount.affiliateId;
+    const subId = "justj";
 
-      // Retry with new cookies
-      const retryResponse = await makeRequest(newCookies);
-      console.log("retryResponse", retryResponse.data.data);
+    console.log(
+      `🆔 Using Affiliate ID: ${affiliateId} from account: ${activeAccount.username}`,
+    );
 
-      res.json({ data: retryResponse.data.data });
-      // res.status(500).json({ error: "Cookie refresh temporarily disabled" });
-    } catch (refreshError) {
-      console.error(
-        "Failed to refresh cookies or retry request:",
-        refreshError
+    // Transform all links
+    const results = links.map((link, index) => {
+      if (!link || !link.trim()) {
+        console.log(`⚠️ Skipping empty link at index ${index}`);
+        return {
+          originalLink: link,
+          shortLink: null,
+          error: "Empty link",
+        };
+      }
+
+      const trimmedLink = link.trim();
+      const encoded = encodeURIComponent(trimmedLink);
+      const transformedLink = `https://s.shopee.vn/an_redir?origin_link=${encoded}&affiliate_id=${affiliateId}&sub_id=${subId}`;
+
+      console.log(
+        `✅ Transformed link ${index + 1}: ${trimmedLink.substring(0, 50)}...`,
       );
-      res
-        .status(500)
-        .json({ error: "Failed to transform link after refreshing cookies" });
-    }
+
+      return {
+        originalLink: trimmedLink,
+        shortLink: transformedLink,
+        error: null,
+      };
+    });
+
+    const successCount = results.filter((r) => r.shortLink).length;
+    console.log(
+      `✅ Successfully transformed ${successCount}/${links.length} links`,
+    );
+    console.log("=".repeat(50));
+
+    res.json({
+      success: true,
+      data: results,
+      total: links.length,
+      successCount: successCount,
+    });
+  } catch (error: any) {
+    console.error("❌ Error transforming links:", error);
+    console.log("=".repeat(50));
+
+    res.status(500).json({
+      success: false,
+      error: "Failed to transform links",
+      details: error.message,
+    });
   }
 });
 
@@ -285,7 +281,7 @@ router.delete(
       console.error("Error deleting customer:", error);
       res.status(500).json({ error: "Failed to delete customer" });
     }
-  }
+  },
 );
 
 // Export customers to Excel
@@ -336,11 +332,11 @@ router.get(
 
       res.setHeader(
         "Content-Disposition",
-        `attachment; filename="${fileName}"`
+        `attachment; filename="${fileName}"`,
       );
       res.setHeader(
         "Content-Type",
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       );
 
       res.send(buffer);
@@ -348,7 +344,7 @@ router.get(
       console.error("Error exporting customers:", error);
       res.status(500).json({ error: "Failed to export customers" });
     }
-  }
+  },
 );
 
 // ==================== ACCOUNT MANAGEMENT ROUTES ====================
@@ -394,11 +390,11 @@ router.get("/accounts", authenticateToken, requireAdmin, async (req, res) => {
 // Create new account
 router.post("/accounts", authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { username, affiliateId } = req.body;
 
-    if (!username || !password) {
+    if (!username || !affiliateId) {
       return res.status(400).json({
-        error: "Username and password are required",
+        error: "Username and affiliateId are required",
       });
     }
 
@@ -412,16 +408,13 @@ router.post("/accounts", authenticateToken, requireAdmin, async (req, res) => {
 
     const newAccount = await dbService.insertAccount({
       username,
-      password, // In production, hash this password
+      affiliateId,
     });
-
-    // Don't return password in response
-    const { password: _, ...accountResponse } = newAccount;
 
     res.json({
       success: true,
       message: "Account created successfully",
-      data: accountResponse,
+      data: newAccount,
     });
   } catch (error) {
     console.error("Error creating account:", error);
@@ -437,11 +430,11 @@ router.put(
   async (req, res) => {
     try {
       const id = req.params.id;
-      const { username, password, status } = req.body;
+      const { username, affiliateId, status } = req.body;
 
       const updates: any = {};
       if (username) updates.username = username;
-      if (password) updates.password = password; // In production, hash this
+      if (affiliateId) updates.affiliateId = affiliateId;
       if (status && ["active", "inactive", "deleted"].includes(status)) {
         updates.status = status;
       }
@@ -452,19 +445,16 @@ router.put(
         return res.status(404).json({ error: "Account not found" });
       }
 
-      // Don't return password in response
-      const { password: _, ...accountResponse } = updatedAccount;
-
       res.json({
         success: true,
         message: "Account updated successfully",
-        data: accountResponse,
+        data: updatedAccount,
       });
     } catch (error) {
       console.error("Error updating account:", error);
       res.status(500).json({ error: "Failed to update account" });
     }
-  }
+  },
 );
 
 // Update account status
@@ -485,69 +475,15 @@ router.patch("/accounts/:id/status", async (req, res) => {
       return res.status(404).json({ error: "Account not found" });
     }
 
-    // Don't return password in response
-    const { password: _, ...accountResponse } = updatedAccount;
-
     res.json({
       success: true,
       message: `Account status updated to ${status}`,
-      data: accountResponse,
+      data: updatedAccount,
     });
   } catch (error) {
     console.error("Error updating account status:", error);
     res.status(500).json({ error: "Failed to update account status" });
   }
 });
-
-// Soft delete account
-router.delete(
-  "/accounts/:id",
-  authenticateToken,
-  requireAdmin,
-  async (req, res) => {
-    try {
-      const id = req.params.id;
-
-      const deleted = await dbService.deleteAccount(id);
-
-      if (!deleted) {
-        return res.status(404).json({ error: "Account not found" });
-      }
-
-      res.json({
-        success: true,
-        message: "Account deleted successfully",
-      });
-    } catch (error) {
-      console.error("Error deleting account:", error);
-      res.status(500).json({ error: "Failed to delete account" });
-    }
-  }
-);
-
-// Test refresh cookie (manual trigger)
-router.post(
-  "/refresh-cookie",
-  authenticateToken,
-  requireAdmin,
-  async (req, res) => {
-    try {
-      console.log("🔄 Manual cookie refresh triggered");
-      const newCookie = await refreshCookie();
-
-      res.json({
-        success: true,
-        message: "Cookie refreshed and saved successfully",
-        cookieLength: newCookie.length,
-      });
-    } catch (error) {
-      console.error("Error refreshing cookie:", error);
-      res.status(500).json({
-        error: "Failed to refresh cookie",
-        details: error instanceof Error ? error.message : String(error),
-      });
-    }
-  }
-);
 
 export default router;

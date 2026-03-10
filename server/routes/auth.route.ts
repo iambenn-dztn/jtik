@@ -6,6 +6,7 @@ import {
   removeRefreshToken,
   verifyRefreshTokenExists,
   createAdmin,
+  updatePassword,
 } from "../services/auth.service.js";
 import {
   generateAccessToken,
@@ -111,7 +112,7 @@ router.post("/refresh", async (req: Request, res: Response) => {
     // Check if refresh token exists in database
     const tokenExists = await verifyRefreshTokenExists(
       decoded.username,
-      refreshToken
+      refreshToken,
     );
     if (!tokenExists) {
       return res.status(401).json({ error: "Refresh token not found" });
@@ -155,7 +156,7 @@ router.get(
       console.error("Get current admin error:", error);
       res.status(500).json({ error: "Failed to get admin info" });
     }
-  }
+  },
 );
 
 /**
@@ -185,5 +186,61 @@ router.post("/setup", async (req: Request, res: Response) => {
     res.status(500).json({ error: "Setup failed" });
   }
 });
+
+/**
+ * PUT /api/auth/change-password
+ * Change admin password (protected route)
+ */
+router.put(
+  "/change-password",
+  authenticateToken,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const { currentPassword, newPassword } = req.body;
+
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({
+          error: "Current password and new password required",
+        });
+      }
+
+      if (newPassword.length < 6) {
+        return res.status(400).json({
+          error: "New password must be at least 6 characters",
+        });
+      }
+
+      // Get admin from database
+      const admin = await getAdminByUsername(req.user.username);
+      if (!admin) {
+        return res.status(404).json({ error: "Admin not found" });
+      }
+
+      // Verify current password
+      const isValidPassword = await comparePassword(
+        currentPassword,
+        admin.password,
+      );
+      if (!isValidPassword) {
+        return res.status(401).json({ error: "Current password is incorrect" });
+      }
+
+      // Update password
+      const success = await updatePassword(req.user.username, newPassword);
+      if (!success) {
+        return res.status(500).json({ error: "Failed to update password" });
+      }
+
+      res.json({ message: "Password changed successfully" });
+    } catch (error) {
+      console.error("Change password error:", error);
+      res.status(500).json({ error: "Failed to change password" });
+    }
+  },
+);
 
 export default router;

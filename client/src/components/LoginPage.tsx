@@ -7,7 +7,7 @@ interface LoginPageProps {
   onLoginSuccess: (
     accessToken: string,
     refreshToken: string,
-    username: string
+    username: string,
   ) => void;
 }
 
@@ -143,19 +143,6 @@ export default function LoginPage({ onLoginSuccess }: LoginPageProps) {
               )}
             </button>
           </form>
-
-          {/* Footer */}
-          <div className="mt-6 text-center text-sm text-gray-600">
-            <p>Default credentials: admin / admin123</p>
-            <p className="mt-1 text-xs text-gray-500">
-              Please change your password after first login
-            </p>
-          </div>
-        </div>
-
-        {/* Security Notice */}
-        <div className="mt-6 text-center text-xs text-gray-600">
-          <p>Protected by JWT authentication</p>
         </div>
       </div>
     </div>
