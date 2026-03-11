@@ -22,6 +22,25 @@ export const transformLink = async (links: string[]): Promise<any> => {
   throw new Error("Failed to transform links");
 };
 
+export const transformText = async (text: string): Promise<any> => {
+  const url = config.endpoints.transformText;
+
+  const axiosConfig = {
+    method: "post",
+    url,
+    data: {
+      text: text,
+    },
+  };
+
+  const res = await axios.request(axiosConfig);
+  if (res.status === 200) {
+    return res.data;
+  }
+
+  throw new Error("Failed to transform text");
+};
+
 export const saveInfo = async (info: any): Promise<string> => {
   const url = config.endpoints.saveInfo;
 

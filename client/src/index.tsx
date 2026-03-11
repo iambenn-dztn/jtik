@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import App from "./App";
 import AdminPage from "./components/AdminPage";
 import LoginPage from "./components/LoginPage";
+import TextTransformPage from "./components/TextTransformPage";
 import * as authService from "./services/authService";
 
 function AppRoot() {
@@ -23,6 +24,7 @@ function AppRoot() {
     <Router>
       <Routes>
         <Route path="/" element={<App />} />
+        <Route path="/text-transform" element={<TextTransformPage />} />
         <Route
           path="/admin/login"
           element={<LoginPage onLoginSuccess={handleLoginSuccess} />}

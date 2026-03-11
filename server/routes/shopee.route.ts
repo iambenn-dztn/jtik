@@ -134,6 +134,101 @@ router.post("/transform-link", async (req, res) => {
   }
 });
 
+router.post("/transform-text", async (req, res) => {
+  console.log("=".repeat(50));
+  console.log("📥 Received transform-text request");
+
+  const { text } = req.body;
+
+  if (!text || typeof text !== "string" || text.trim().length === 0) {
+    return res.status(400).json({
+      error: "Text is required and must not be empty",
+    });
+  }
+
+  console.log(`📝 Processing text (${text.length} characters)`);
+
+  try {
+    // Get active account to retrieve affiliateId
+    const activeAccount = await dbService.getFirstActiveAccount();
+
+    if (!activeAccount) {
+      return res.status(500).json({
+        error: "No active account found. Please configure an account first.",
+      });
+    }
+
+    const affiliateId = activeAccount.affiliateId;
+    const subId = "justj";
+
+    console.log(
+      `🆔 Using Affiliate ID: ${affiliateId} from account: ${activeAccount.username}`,
+    );
+
+    // Extract all URLs from text
+    const urlRegex = /(https?:\/\/[^\s]+)/gi;
+    const foundUrls = text.match(urlRegex) || [];
+
+    console.log(`🔗 Found ${foundUrls.length} URL(s) in text`);
+
+    if (foundUrls.length === 0) {
+      return res.json({
+        success: true,
+        data: {
+          transformedText: text,
+          links: [],
+        },
+        message: "No URLs found in text",
+      });
+    }
+
+    // Transform URLs and build results
+    let transformedText = text;
+    const linkResults: any[] = [];
+
+    foundUrls.forEach((url, index) => {
+      const trimmedUrl = url.trim();
+      const encoded = encodeURIComponent(trimmedUrl);
+      const transformedLink = `https://s.shopee.vn/an_redir?origin_link=${encoded}&affiliate_id=${affiliateId}&sub_id=${subId}`;
+
+      console.log(
+        `✅ Transformed link ${index + 1}: ${trimmedUrl.substring(0, 50)}...`,
+      );
+
+      // Replace URL in text
+      transformedText = transformedText.replace(trimmedUrl, transformedLink);
+
+      linkResults.push({
+        originalLink: trimmedUrl,
+        shortLink: transformedLink,
+        error: null,
+      });
+    });
+
+    console.log(`✅ Successfully transformed ${linkResults.length} URL(s)`);
+    console.log("=".repeat(50));
+
+    res.json({
+      success: true,
+      data: {
+        transformedText,
+        links: linkResults,
+      },
+      total: linkResults.length,
+      successCount: linkResults.length,
+    });
+  } catch (error: any) {
+    console.error("❌ Error transforming text:", error);
+    console.log("=".repeat(50));
+
+    res.status(500).json({
+      success: false,
+      error: "Failed to transform text",
+      details: error.message,
+    });
+  }
+});
+
 router.post("/save-info", async (req, res) => {
   try {
     const {
