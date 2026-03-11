@@ -183,6 +183,38 @@ function AdminPage() {
     }
   };
 
+  const handleExportCustomers = async () => {
+    try {
+      const response = await authService.authenticatedFetch(
+        config.endpoints.exportCustomers
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to export customers");
+      }
+
+      // Get the blob from response
+      const blob = await response.blob();
+      
+      // Create a URL for the blob
+      const url = window.URL.createObjectURL(blob);
+      
+      // Create a temporary link and trigger download
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `customers_${new Date().toISOString().split("T")[0]}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error exporting customers:", error);
+      alert("Không thể xuất file Excel. Vui lòng thử lại.");
+    }
+  };
+
   // Account management functions
   const fetchAccounts = async () => {
     try {
@@ -456,9 +488,7 @@ function AdminPage() {
                     Refresh
                   </button>
                   <button
-                    onClick={() =>
-                      window.open(config.endpoints.exportCustomers, "_blank")
-                    }
+                    onClick={handleExportCustomers}
                     className="flex items-center gap-2 px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 transition-all"
                   >
                     <Download size={16} />

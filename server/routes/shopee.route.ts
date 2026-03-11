@@ -324,62 +324,7 @@ router.get("/customers", authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
-// Update customer status
-router.patch("/customers/:id/status", async (req, res) => {
-  try {
-    const id = req.params.id;
-    const { status } = req.body;
-
-    if (!["active", "paid", "deleted"].includes(status)) {
-      return res.status(400).json({
-        error: "Invalid status. Must be 'active', 'paid', or 'deleted'",
-      });
-    }
-
-    const updatedCustomer = await dbService.updateCustomerStatus(id, status);
-
-    if (!updatedCustomer) {
-      return res.status(404).json({ error: "Customer not found" });
-    }
-
-    res.json({
-      success: true,
-      message: `Customer status updated to ${status}`,
-      data: updatedCustomer,
-    });
-  } catch (error) {
-    console.error("Error updating customer status:", error);
-    res.status(500).json({ error: "Failed to update customer status" });
-  }
-});
-
-// Soft delete customer
-router.delete(
-  "/customers/:id",
-  authenticateToken,
-  requireAdmin,
-  async (req, res) => {
-    try {
-      const id = req.params.id;
-
-      const deleted = await dbService.deleteCustomer(id);
-
-      if (!deleted) {
-        return res.status(404).json({ error: "Customer not found" });
-      }
-
-      res.json({
-        success: true,
-        message: "Customer deleted successfully",
-      });
-    } catch (error) {
-      console.error("Error deleting customer:", error);
-      res.status(500).json({ error: "Failed to delete customer" });
-    }
-  },
-);
-
-// Export customers to Excel
+// Export customers to Excel (must be before parameterized routes)
 router.get(
   "/customers/export",
   authenticateToken,
@@ -438,6 +383,61 @@ router.get(
     } catch (error) {
       console.error("Error exporting customers:", error);
       res.status(500).json({ error: "Failed to export customers" });
+    }
+  },
+);
+
+// Update customer status
+router.patch("/customers/:id/status", async (req, res) => {
+  try {
+    const id = req.params.id;
+    const { status } = req.body;
+
+    if (!["active", "paid", "deleted"].includes(status)) {
+      return res.status(400).json({
+        error: "Invalid status. Must be 'active', 'paid', or 'deleted'",
+      });
+    }
+
+    const updatedCustomer = await dbService.updateCustomerStatus(id, status);
+
+    if (!updatedCustomer) {
+      return res.status(404).json({ error: "Customer not found" });
+    }
+
+    res.json({
+      success: true,
+      message: `Customer status updated to ${status}`,
+      data: updatedCustomer,
+    });
+  } catch (error) {
+    console.error("Error updating customer status:", error);
+    res.status(500).json({ error: "Failed to update customer status" });
+  }
+});
+
+// Soft delete customer
+router.delete(
+  "/customers/:id",
+  authenticateToken,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const id = req.params.id;
+
+      const deleted = await dbService.deleteCustomer(id);
+
+      if (!deleted) {
+        return res.status(404).json({ error: "Customer not found" });
+      }
+
+      res.json({
+        success: true,
+        message: "Customer deleted successfully",
+      });
+    } catch (error) {
+      console.error("Error deleting customer:", error);
+      res.status(500).json({ error: "Failed to delete customer" });
     }
   },
 );
