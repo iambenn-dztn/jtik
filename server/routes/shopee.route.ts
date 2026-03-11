@@ -27,6 +27,69 @@ const writeCookiesToFile = (cookies: string) => {
 
 const router = express.Router();
 
+// Helper function to expand shortened Shopee URLs
+const expandShopeeUrl = async (url: string): Promise<string> => {
+  try {
+    // Follow redirects to get the final URL
+    const response = await axios.get(url, {
+      maxRedirects: 10,
+      validateStatus: (status) => status < 400,
+      timeout: 10000,
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+      },
+    });
+
+    // Get the final URL after all redirects
+    const finalUrl = response.request.res.responseUrl || url;
+    console.log(`🔄 Expanded ${url} -> ${finalUrl}`);
+    return finalUrl;
+  } catch (error: any) {
+    console.error(`❌ Error expanding URL ${url}:`, error.message);
+    // If expansion fails, return original URL
+    return url;
+  }
+};
+
+// Helper function to extract and normalize Shopee URL
+const normalizeShopeeUrl = (url: string): string | null => {
+  try {
+    const urlObj = new URL(url);
+    const pathname = urlObj.pathname;
+
+    // Extract shop_id and item_id from various formats
+    // Format 1: /product/{shop_id}/{item_id}
+    // Format 2: /{shop_name}/{shop_id}/{item_id}
+    // Format 3: /universal-link/...
+
+    const pathParts = pathname.split("/").filter((part) => part);
+
+    if (pathParts.length >= 2) {
+      // Get the last two numeric parts (shop_id and item_id)
+      const shopId = pathParts[pathParts.length - 2];
+      const itemId = pathParts[pathParts.length - 1];
+
+      // Check if they are numeric
+      if (/^\d+$/.test(shopId) && /^\d+$/.test(itemId)) {
+        // Check if there's a shop name (3 parts minimum, first is not 'product')
+        if (pathParts.length >= 3 && pathParts[0] !== "product") {
+          const shopName = pathParts[0];
+          return `https://shopee.vn/${shopName}/${shopId}/${itemId}`;
+        } else {
+          return `https://shopee.vn/product/${shopId}/${itemId}`;
+        }
+      }
+    }
+
+    console.error(`❌ Could not extract IDs from URL: ${url}`);
+    return null;
+  } catch (error) {
+    console.error(`❌ Error parsing URL ${url}:`, error);
+    return null;
+  }
+};
+
 // Old admin auth endpoint - DEPRECATED
 // Use /api/auth/login instead
 router.post("/admin/auth", (req, res) => {
@@ -84,31 +147,91 @@ router.post("/transform-link", async (req, res) => {
       `🆔 Using Affiliate ID: ${affiliateId} from account: ${activeAccount.username}`,
     );
 
-    // Transform all links
-    const results = links.map((link, index) => {
-      if (!link || !link.trim()) {
-        console.log(`⚠️ Skipping empty link at index ${index}`);
-        return {
-          originalLink: link,
-          shortLink: null,
-          error: "Empty link",
-        };
-      }
+    // Helper function to validate Shopee links
+    const isShopeeLink = (url: string): boolean => {
+      const shopeePatterns = [
+        /shopee\.vn/i,
+        /shp\.ee/i,
+        /s\.shopee\.vn/i,
+        /vn\.shp\.ee/i,
+      ];
+      return shopeePatterns.some((pattern) => pattern.test(url));
+    };
 
-      const trimmedLink = link.trim();
-      const encoded = encodeURIComponent(trimmedLink);
-      const transformedLink = `https://s.shopee.vn/an_redir?origin_link=${encoded}&affiliate_id=${affiliateId}&sub_id=${subId}`;
+    // Transform all links (async processing)
+    const results = await Promise.all(
+      links.map(async (link, index) => {
+        if (!link || !link.trim()) {
+          console.log(`⚠️ Skipping empty link at index ${index}`);
+          return {
+            originalLink: link,
+            shortLink: null,
+            error: "Empty link",
+          };
+        }
 
-      console.log(
-        `✅ Transformed link ${index + 1}: ${trimmedLink.substring(0, 50)}...`,
-      );
+        const trimmedLink = link.trim();
 
-      return {
-        originalLink: trimmedLink,
-        shortLink: transformedLink,
-        error: null,
-      };
-    });
+        // Validate if it's a Shopee link
+        if (!isShopeeLink(trimmedLink)) {
+          console.log(
+            `❌ Invalid Shopee link at index ${index}: ${trimmedLink}`,
+          );
+          return {
+            originalLink: trimmedLink,
+            shortLink: null,
+            error:
+              "Not a valid Shopee link. Supported formats: shopee.vn, vn.shp.ee, s.shopee.vn",
+          };
+        }
+
+        try {
+          // Always expand URL to get the final redirect destination
+          console.log(`🔄 Expanding link: ${trimmedLink}`);
+          const expandedUrl = await expandShopeeUrl(trimmedLink);
+
+          // Normalize the URL to extract shop_id and item_id
+          const normalizedUrl = normalizeShopeeUrl(expandedUrl);
+
+          if (!normalizedUrl) {
+            console.log(
+              `❌ Could not normalize link at index ${index}: ${trimmedLink}`,
+            );
+            return {
+              originalLink: trimmedLink,
+              shortLink: null,
+              error: "Could not extract product information from URL",
+            };
+          }
+
+          console.log(`✅ Normalized URL: ${normalizedUrl}`);
+
+          // Encode the normalized URL
+          const encoded = encodeURIComponent(normalizedUrl);
+          const transformedLink = `https://s.shopee.vn/an_redir?origin_link=${encoded}&affiliate_id=${affiliateId}&sub_id=${subId}`;
+
+          console.log(
+            `✅ Transformed link ${index + 1}: ${trimmedLink.substring(0, 50)}...`,
+          );
+
+          return {
+            originalLink: trimmedLink,
+            shortLink: transformedLink,
+            error: null,
+          };
+        } catch (error: any) {
+          console.error(
+            `❌ Error processing link at index ${index}:`,
+            error.message,
+          );
+          return {
+            originalLink: trimmedLink,
+            shortLink: null,
+            error: error.message || "Failed to process link",
+          };
+        }
+      }),
+    );
 
     const successCount = results.filter((r) => r.shortLink).length;
     console.log(
@@ -165,6 +288,17 @@ router.post("/transform-text", async (req, res) => {
       `🆔 Using Affiliate ID: ${affiliateId} from account: ${activeAccount.username}`,
     );
 
+    // Helper function to validate Shopee links
+    const isShopeeLink = (url: string): boolean => {
+      const shopeePatterns = [
+        /shopee\.vn/i,
+        /shp\.ee/i,
+        /s\.shopee\.vn/i,
+        /vn\.shp\.ee/i,
+      ];
+      return shopeePatterns.some((pattern) => pattern.test(url));
+    };
+
     // Extract all URLs from text
     const urlRegex = /(https?:\/\/[^\s]+)/gi;
     const foundUrls = text.match(urlRegex) || [];
@@ -186,24 +320,70 @@ router.post("/transform-text", async (req, res) => {
     let transformedText = text;
     const linkResults: any[] = [];
 
-    foundUrls.forEach((url, index) => {
+    // Process URLs sequentially to avoid race conditions with text replacement
+    for (let index = 0; index < foundUrls.length; index++) {
+      const url = foundUrls[index];
       const trimmedUrl = url.trim();
-      const encoded = encodeURIComponent(trimmedUrl);
-      const transformedLink = `https://s.shopee.vn/an_redir?origin_link=${encoded}&affiliate_id=${affiliateId}&sub_id=${subId}`;
 
-      console.log(
-        `✅ Transformed link ${index + 1}: ${trimmedUrl.substring(0, 50)}...`,
-      );
+      // Check if it's a Shopee link
+      if (!isShopeeLink(trimmedUrl)) {
+        console.log(`⚠️ Skipping non-Shopee link ${index + 1}: ${trimmedUrl}`);
+        // Keep original URL in text if it's not a Shopee link
+        linkResults.push({
+          originalLink: trimmedUrl,
+          shortLink: trimmedUrl,
+          error: "Not a Shopee link",
+        });
+        continue;
+      }
 
-      // Replace URL in text
-      transformedText = transformedText.replace(trimmedUrl, transformedLink);
+      try {
+        // Always expand URL to get the final redirect destination
+        console.log(`🔄 Expanding link: ${trimmedUrl}`);
+        const expandedUrl = await expandShopeeUrl(trimmedUrl);
 
-      linkResults.push({
-        originalLink: trimmedUrl,
-        shortLink: transformedLink,
-        error: null,
-      });
-    });
+        // Normalize the URL to extract shop_id and item_id
+        const normalizedUrl = normalizeShopeeUrl(expandedUrl);
+
+        if (!normalizedUrl) {
+          console.log(
+            `❌ Could not normalize link ${index + 1}: ${trimmedUrl}`,
+          );
+          linkResults.push({
+            originalLink: trimmedUrl,
+            shortLink: trimmedUrl,
+            error: "Could not extract product information",
+          });
+          continue;
+        }
+
+        console.log(`✅ Normalized URL: ${normalizedUrl}`);
+
+        // Encode the normalized URL
+        const encoded = encodeURIComponent(normalizedUrl);
+        const transformedLink = `https://s.shopee.vn/an_redir?origin_link=${encoded}&affiliate_id=${affiliateId}&sub_id=${subId}`;
+
+        console.log(
+          `✅ Transformed link ${index + 1}: ${trimmedUrl.substring(0, 50)}...`,
+        );
+
+        // Replace URL in text
+        transformedText = transformedText.replace(trimmedUrl, transformedLink);
+
+        linkResults.push({
+          originalLink: trimmedUrl,
+          shortLink: transformedLink,
+          error: null,
+        });
+      } catch (error: any) {
+        console.error(`❌ Error processing link ${index + 1}:`, error.message);
+        linkResults.push({
+          originalLink: trimmedUrl,
+          shortLink: trimmedUrl,
+          error: error.message || "Failed to process link",
+        });
+      }
+    }
 
     console.log(`✅ Successfully transformed ${linkResults.length} URL(s)`);
     console.log("=".repeat(50));
@@ -580,5 +760,33 @@ router.patch("/accounts/:id/status", async (req, res) => {
     res.status(500).json({ error: "Failed to update account status" });
   }
 });
+
+// Delete account (soft delete by setting status to 'deleted')
+router.delete(
+  "/accounts/:id",
+  authenticateToken,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const id = req.params.id;
+
+      // Soft delete by updating status to 'deleted'
+      const updatedAccount = await dbService.updateAccountStatus(id, "deleted");
+
+      if (!updatedAccount) {
+        return res.status(404).json({ error: "Account not found" });
+      }
+
+      res.json({
+        success: true,
+        message: "Account deleted successfully",
+        data: updatedAccount,
+      });
+    } catch (error) {
+      console.error("Error deleting account:", error);
+      res.status(500).json({ error: "Failed to delete account" });
+    }
+  },
+);
 
 export default router;

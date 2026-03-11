@@ -460,10 +460,10 @@ function AdminPage() {
                   <button
                     onClick={handleLogout}
                     className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-all text-sm"
-                    title="Logout"
+                    title="Đăng xuất"
                   >
                     <LogOut size={16} />
-                    <span className="hidden sm:inline">Logout</span>
+                    <span className="hidden sm:inline">Đăng xuất</span>
                   </button>
                   <button
                     onClick={() => setShowPasswordModal(true)}
@@ -471,27 +471,27 @@ function AdminPage() {
                     title="Đổi mật khẩu"
                   >
                     <Lock size={16} />
-                    <span className="hidden md:inline">Đổi MK</span>
+                    <span className="hidden md:inline">Mật khẩu</span>
                   </button>
                   <button
                     onClick={() => openAccountModal("view")}
                     className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-green-500/30 text-green-400 hover:bg-green-500/10 transition-all text-sm"
-                    title="Quản lý Account"
+                    title="Quản lý Tài khoản"
                   >
                     <Users size={16} />
-                    <span className="hidden md:inline">Account</span>
+                    <span className="hidden md:inline">Tài khoản</span>
                   </button>
                   <button
                     onClick={handleRefresh}
                     disabled={refreshing}
                     className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-blue-500/30 text-blue-400 hover:bg-blue-500/10 transition-all disabled:opacity-50 text-sm"
-                    title="Refresh"
+                    title="Làm mới"
                   >
                     <RefreshCw
                       size={16}
                       className={refreshing ? "animate-spin" : ""}
                     />
-                    <span className="hidden sm:inline">Refresh</span>
+                    <span className="hidden sm:inline">Làm mới</span>
                   </button>
                   <button
                     onClick={handleExportCustomers}
@@ -857,7 +857,7 @@ function AdminPage() {
                             ) : (
                               <span className="flex items-center gap-1 text-blue-400 text-xs">
                                 <Clock size={14} />
-                                Active
+                                Hoạt động
                               </span>
                             )}
                           </div>
@@ -970,8 +970,8 @@ function AdminPage() {
               <div className="flex items-center justify-between">
                 <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
                   <Users size={20} className="text-green-400" />
-                  <span className="hidden sm:inline">Quản lý Account</span>
-                  <span className="sm:hidden">Account</span>
+                  <span className="hidden sm:inline">Quản lý Tài khoản</span>
+                  <span className="sm:hidden">Tài khoản</span>
                 </h2>
                 <button
                   onClick={() => setShowAccountModal(false)}
@@ -991,7 +991,7 @@ function AdminPage() {
                   className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
                 >
                   <Users size={16} />
-                  Thêm Account
+                  Thêm Tài khoản
                 </button>
               </div>
 
@@ -999,11 +999,11 @@ function AdminPage() {
               {accountModalMode === "view" && (
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold text-white">
-                    Danh sách Account
+                    Danh sách Tài khoản
                   </h3>
                   {accounts.length === 0 ? (
                     <div className="text-gray-400 text-center py-8">
-                      Chưa có account nào
+                      Chưa có tài khoản nào
                     </div>
                   ) : (
                     <>
@@ -1012,11 +1012,11 @@ function AdminPage() {
                         <table className="w-full border-collapse">
                           <thead>
                             <tr className="text-gray-400 border-b border-gray-700">
-                              <th className="text-left p-3">Username</th>
-                              <th className="text-left p-3">Affiliate ID</th>
-                              <th className="text-left p-3">Status</th>
-                              <th className="text-left p-3">Created</th>
-                              <th className="text-left p-3">Actions</th>
+                              <th className="text-left p-3">Tên tài khoản</th>
+                              <th className="text-left p-3">ID Affiliate</th>
+                              <th className="text-left p-3">Trạng thái</th>
+                              <th className="text-left p-3">Ngày tạo</th>
+                              <th className="text-left p-3">Thao tác</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -1041,7 +1041,11 @@ function AdminPage() {
                                           : "bg-red-500/20 text-red-400 border border-red-500/30"
                                     }`}
                                   >
-                                    {account.status}
+                                    {account.status === "active"
+                                      ? "Hoạt động"
+                                      : account.status === "inactive"
+                                        ? "Tạm khóa"
+                                        : "Đã xóa"}
                                   </span>
                                 </td>
                                 <td className="p-3 text-gray-400">
@@ -1056,7 +1060,7 @@ function AdminPage() {
                                         openAccountModal("edit", account)
                                       }
                                       className="text-blue-400 hover:text-blue-300 transition-colors p-1 hover:bg-blue-500/10 rounded"
-                                      title="Sửa account"
+                                      title="Sửa tài khoản"
                                     >
                                       <Eye size={16} />
                                     </button>
@@ -1093,7 +1097,7 @@ function AdminPage() {
                                             deleteAccount(account.id)
                                           }
                                           className="text-red-400 hover:text-red-300 transition-colors p-1 hover:bg-red-500/10 rounded"
-                                          title="Xóa account"
+                                          title="Xóa tài khoản"
                                         >
                                           <Trash2 size={16} />
                                         </button>
@@ -1132,7 +1136,11 @@ function AdminPage() {
                                       : "bg-red-500/20 text-red-400 border border-red-500/30"
                                 }`}
                               >
-                                {account.status}
+                                {account.status === "active"
+                                  ? "Hoạt động"
+                                  : account.status === "inactive"
+                                    ? "Tạm khóa"
+                                    : "Đã xóa"}
                               </span>
                             </div>
 
@@ -1208,8 +1216,8 @@ function AdminPage() {
                   <div className="flex items-center justify-between">
                     <h3 className="text-lg font-semibold text-white">
                       {accountModalMode === "add"
-                        ? "Thêm Account Mới"
-                        : "Sửa Account"}
+                        ? "Thêm Tài khoản Mới"
+                        : "Sửa Tài khoản"}
                     </h3>
                     <button
                       onClick={() => setAccountModalMode("view")}
@@ -1222,7 +1230,7 @@ function AdminPage() {
                   <form onSubmit={handleAccountSubmit} className="space-y-4">
                     <div>
                       <label className="block text-gray-300 text-sm font-medium mb-2">
-                        Username
+                        Tên tài khoản
                       </label>
                       <input
                         type="text"
@@ -1234,7 +1242,7 @@ function AdminPage() {
                           }))
                         }
                         className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:border-blue-500 focus:outline-none"
-                        placeholder="Nhập username..."
+                        placeholder="Nhập tên tài khoản..."
                         required
                       />
                     </div>
@@ -1265,8 +1273,8 @@ function AdminPage() {
                       >
                         <CheckCircle size={16} />
                         {accountModalMode === "add"
-                          ? "Thêm Account"
-                          : "Cập nhật Account"}
+                          ? "Thêm Tài khoản"
+                          : "Cập nhật"}
                       </button>
                       <button
                         type="button"
