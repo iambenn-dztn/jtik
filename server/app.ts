@@ -88,8 +88,8 @@ app.get("/api/health", (req, res) => {
 app.use("/api", apiLimiter);
 
 // Apply stricter rate limiting to auth endpoints (before router)
-app.use("/api/auth/login", authLimiter);
-app.use("/api/auth/change-password", authLimiter);
+// app.use("/api/auth/login", authLimiter);
+// app.use("/api/auth/change-password", authLimiter);
 
 // Apply transform link rate limiter (before router)
 app.use("/api/shopee/transform-link", transformLimiter);
