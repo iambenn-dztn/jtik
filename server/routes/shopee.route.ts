@@ -62,9 +62,25 @@ const normalizeShopeeUrl = (url: string): string | null => {
     // Format 1: /product/{shop_id}/{item_id}
     // Format 2: /{shop_name}/{shop_id}/{item_id}
     // Format 3: /universal-link/...
+    // Format 4: Campaign/Voucher pages like /m/*, /deals/*, etc.
 
     const pathParts = pathname.split("/").filter((part) => part);
 
+    // Check if this is a campaign/voucher/special page (e.g., /m/VoucherXtra, /deals/*, etc.)
+    // These pages don't have shop_id/item_id, so return the clean URL as-is
+    if (pathParts.length > 0) {
+      const firstPart = pathParts[0];
+      const campaignPaths = ['m', 'deals', 'flash_deal', 'brands', 'mall', 'events', 'shop', 'seller'];
+      
+      if (campaignPaths.includes(firstPart)) {
+        // This is a campaign/special page, return as-is
+        const cleanUrl = `https://shopee.vn${pathname}`;
+        console.log(`📋 Campaign/Special page detected: ${cleanUrl}`);
+        return cleanUrl;
+      }
+    }
+
+    // Try to extract product URLs with shop_id and item_id
     if (pathParts.length >= 2) {
       // Get the last two numeric parts (shop_id and item_id)
       const shopId = pathParts[pathParts.length - 2];
@@ -82,8 +98,9 @@ const normalizeShopeeUrl = (url: string): string | null => {
       }
     }
 
-    console.error(`❌ Could not extract IDs from URL: ${url}`);
-    return null;
+    // If no specific format matched, return the clean shopee.vn URL
+    console.log(`⚠️ Could not match specific format, returning clean URL: ${url}`);
+    return `https://shopee.vn${pathname}`;
   } catch (error) {
     console.error(`❌ Error parsing URL ${url}:`, error);
     return null;
