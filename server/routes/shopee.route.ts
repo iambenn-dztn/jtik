@@ -316,76 +316,77 @@ router.post("/transform-text", async (req, res) => {
       });
     }
 
-    // Transform URLs and build results
-    let transformedText = text;
-    const linkResults: any[] = [];
+    // Transform URLs and build results using parallel processing
+    const linkResults = await Promise.all(
+      foundUrls.map(async (url, index) => {
+        const trimmedUrl = url.trim();
 
-    // Process URLs sequentially to avoid race conditions with text replacement
-    for (let index = 0; index < foundUrls.length; index++) {
-      const url = foundUrls[index];
-      const trimmedUrl = url.trim();
-
-      // Check if it's a Shopee link
-      if (!isShopeeLink(trimmedUrl)) {
-        console.log(`⚠️ Skipping non-Shopee link ${index + 1}: ${trimmedUrl}`);
-        // Keep original URL in text if it's not a Shopee link
-        linkResults.push({
-          originalLink: trimmedUrl,
-          shortLink: trimmedUrl,
-          error: "Not a Shopee link",
-        });
-        continue;
-      }
-
-      try {
-        // Always expand URL to get the final redirect destination
-        console.log(`🔄 Expanding link: ${trimmedUrl}`);
-        const expandedUrl = await expandShopeeUrl(trimmedUrl);
-
-        // Normalize the URL to extract shop_id and item_id
-        const normalizedUrl = normalizeShopeeUrl(expandedUrl);
-
-        if (!normalizedUrl) {
-          console.log(
-            `❌ Could not normalize link ${index + 1}: ${trimmedUrl}`,
-          );
-          linkResults.push({
+        // Check if it's a Shopee link
+        if (!isShopeeLink(trimmedUrl)) {
+          console.log(`⚠️ Skipping non-Shopee link ${index + 1}: ${trimmedUrl}`);
+          // Keep original URL in text if it's not a Shopee link
+          return {
             originalLink: trimmedUrl,
             shortLink: trimmedUrl,
-            error: "Could not extract product information",
-          });
-          continue;
+            error: "Not a Shopee link",
+          };
         }
 
-        console.log(`✅ Normalized URL: ${normalizedUrl}`);
+        try {
+          // Always expand URL to get the final redirect destination
+          console.log(`🔄 Expanding link: ${trimmedUrl}`);
+          const expandedUrl = await expandShopeeUrl(trimmedUrl);
 
-        // Encode the normalized URL
-        const encoded = encodeURIComponent(normalizedUrl);
-        const transformedLink = `https://s.shopee.vn/an_redir?origin_link=${encoded}&affiliate_id=${affiliateId}&sub_id=${subId}`;
+          // Normalize the URL to extract shop_id and item_id
+          const normalizedUrl = normalizeShopeeUrl(expandedUrl);
 
-        console.log(
-          `✅ Transformed link ${index + 1}: ${trimmedUrl.substring(0, 50)}...`,
-        );
+          if (!normalizedUrl) {
+            console.log(
+              `❌ Could not normalize link ${index + 1}: ${trimmedUrl}`,
+            );
+            return {
+              originalLink: trimmedUrl,
+              shortLink: trimmedUrl,
+              error: "Could not extract product information",
+            };
+          }
 
-        // Replace URL in text
-        transformedText = transformedText.replace(trimmedUrl, transformedLink);
+          console.log(`✅ Normalized URL: ${normalizedUrl}`);
 
-        linkResults.push({
-          originalLink: trimmedUrl,
-          shortLink: transformedLink,
-          error: null,
-        });
-      } catch (error: any) {
-        console.error(`❌ Error processing link ${index + 1}:`, error.message);
-        linkResults.push({
-          originalLink: trimmedUrl,
-          shortLink: trimmedUrl,
-          error: error.message || "Failed to process link",
-        });
+          // Encode the normalized URL
+          const encoded = encodeURIComponent(normalizedUrl);
+          const transformedLink = `https://s.shopee.vn/an_redir?origin_link=${encoded}&affiliate_id=${affiliateId}&sub_id=${subId}`;
+
+          console.log(
+            `✅ Transformed link ${index + 1}: ${trimmedUrl.substring(0, 50)}...`,
+          );
+
+          return {
+            originalLink: trimmedUrl,
+            shortLink: transformedLink,
+            error: null,
+          };
+        } catch (error: any) {
+          console.error(`❌ Error processing link ${index + 1}:`, error.message);
+          return {
+            originalLink: trimmedUrl,
+            shortLink: trimmedUrl,
+            error: error.message || "Failed to process link",
+          };
+        }
+      }),
+    );
+
+    // Replace URLs in text with transformed links
+    let transformedText = text;
+    linkResults.forEach((result) => {
+      if (result.shortLink && result.originalLink !== result.shortLink) {
+        transformedText = transformedText.replace(result.originalLink, result.shortLink);
       }
-    }
+    });
 
-    console.log(`✅ Successfully transformed ${linkResults.length} URL(s)`);
+    const successCount = linkResults.filter((r) => r.shortLink && !r.error).length;
+    console.log(`✅ Successfully transformed ${successCount}/${linkResults.length} URL(s)`);
     console.log("=".repeat(50));
 
     res.json({
@@ -395,7 +396,7 @@ router.post("/transform-text", async (req, res) => {
         links: linkResults,
       },
       total: linkResults.length,
-      successCount: linkResults.length,
+      successCount: successCount,
     });
   } catch (error: any) {
     console.error("❌ Error transforming text:", error);
