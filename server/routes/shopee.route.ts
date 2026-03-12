@@ -70,8 +70,17 @@ const normalizeShopeeUrl = (url: string): string | null => {
     // These pages don't have shop_id/item_id, so return the clean URL as-is
     if (pathParts.length > 0) {
       const firstPart = pathParts[0];
-      const campaignPaths = ['m', 'deals', 'flash_deal', 'brands', 'mall', 'events', 'shop', 'seller'];
-      
+      const campaignPaths = [
+        "m",
+        "deals",
+        "flash_deal",
+        "brands",
+        "mall",
+        "events",
+        "shop",
+        "seller",
+      ];
+
       if (campaignPaths.includes(firstPart)) {
         // This is a campaign/special page, return as-is
         const cleanUrl = `https://shopee.vn${pathname}`;
@@ -99,7 +108,9 @@ const normalizeShopeeUrl = (url: string): string | null => {
     }
 
     // If no specific format matched, return the clean shopee.vn URL
-    console.log(`⚠️ Could not match specific format, returning clean URL: ${url}`);
+    console.log(
+      `⚠️ Could not match specific format, returning clean URL: ${url}`,
+    );
     return `https://shopee.vn${pathname}`;
   } catch (error) {
     console.error(`❌ Error parsing URL ${url}:`, error);
@@ -340,7 +351,9 @@ router.post("/transform-text", async (req, res) => {
 
         // Check if it's a Shopee link
         if (!isShopeeLink(trimmedUrl)) {
-          console.log(`⚠️ Skipping non-Shopee link ${index + 1}: ${trimmedUrl}`);
+          console.log(
+            `⚠️ Skipping non-Shopee link ${index + 1}: ${trimmedUrl}`,
+          );
           // Keep original URL in text if it's not a Shopee link
           return {
             originalLink: trimmedUrl,
@@ -384,7 +397,10 @@ router.post("/transform-text", async (req, res) => {
             error: null,
           };
         } catch (error: any) {
-          console.error(`❌ Error processing link ${index + 1}:`, error.message);
+          console.error(
+            `❌ Error processing link ${index + 1}:`,
+            error.message,
+          );
           return {
             originalLink: trimmedUrl,
             shortLink: trimmedUrl,
@@ -398,12 +414,19 @@ router.post("/transform-text", async (req, res) => {
     let transformedText = text;
     linkResults.forEach((result) => {
       if (result.shortLink && result.originalLink !== result.shortLink) {
-        transformedText = transformedText.replace(result.originalLink, result.shortLink);
+        transformedText = transformedText.replace(
+          result.originalLink,
+          result.shortLink,
+        );
       }
     });
 
-    const successCount = linkResults.filter((r) => r.shortLink && !r.error).length;
-    console.log(`✅ Successfully transformed ${successCount}/${linkResults.length} URL(s)`);
+    const successCount = linkResults.filter(
+      (r) => r.shortLink && !r.error,
+    ).length;
+    console.log(
+      `✅ Successfully transformed ${successCount}/${linkResults.length} URL(s)`,
+    );
     console.log("=".repeat(50));
 
     res.json({

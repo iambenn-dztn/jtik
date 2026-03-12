@@ -1,18 +1,25 @@
 import {
   Building2,
   Check,
+  Clipboard,
   CreditCard,
+  Facebook,
+  Gift,
   Link as LinkIcon,
   Loader2,
+  MessageCircle,
   Package,
   Phone,
   RefreshCw,
   Share2,
   ShoppingCart,
   Sparkles,
+  Tag,
   User,
+  Users,
   Wand2,
   X,
+  Zap,
 } from "lucide-react";
 import React, { useState } from "react";
 
@@ -122,6 +129,91 @@ function App() {
     setTimeout(() => setShowSnackbar(false), 2000);
   };
 
+  const handlePasteAndTransform = async () => {
+    try {
+      const clipboardText = await navigator.clipboard.readText();
+
+      if (!clipboardText || clipboardText.trim().length === 0) {
+        setError("Clipboard trống hoặc không có nội dung");
+        return;
+      }
+
+      setUrls(clipboardText);
+      setError(null);
+
+      // Parse textarea into array of links
+      const linkArray = clipboardText
+        .split("\n")
+        .map((link) => link.trim())
+        .filter((link) => link.length > 0);
+
+      if (linkArray.length === 0) {
+        setError("Vui lòng nhập ít nhất một link");
+        return;
+      }
+
+      // Validate that all links start with http
+      const invalidLinks = linkArray.filter((link) => !link.startsWith("http"));
+      if (invalidLinks.length > 0) {
+        setError(
+          `${invalidLinks.length} link không hợp lệ. Mỗi link phải bắt đầu bằng http:// hoặc https://`,
+        );
+        return;
+      }
+
+      // Validate that all links are Shopee links
+      const shopeePatterns = [
+        /shopee\.vn/i,
+        /shp\.ee/i,
+        /s\.shopee\.vn/i,
+        /vn\.shp\.ee/i,
+      ];
+      const nonShopeeLinks = linkArray.filter(
+        (link) => !shopeePatterns.some((pattern) => pattern.test(link)),
+      );
+      if (nonShopeeLinks.length > 0) {
+        setError(
+          `${nonShopeeLinks.length} link không phải link Shopee. Vui lòng chỉ nhập link từ shopee.vn, vn.shp.ee, hoặc s.shopee.vn`,
+        );
+        return;
+      }
+
+      setLoading(true);
+      setResults([]);
+
+      try {
+        const response = await transformLink(linkArray);
+        console.log("Transform response:", response);
+
+        if (response.success && response.data) {
+          setResults(response.data);
+
+          // Check if there are any errors in the results
+          const errorsFound = response.data.filter(
+            (r: any) => r.error || !r.shortLink,
+          );
+          if (errorsFound.length > 0) {
+            setLinkErrors(errorsFound);
+            setShowLinkErrorModal(true);
+          }
+
+          setUrls(""); // Clear textarea after success
+        } else {
+          setError("Không thể chuyển đổi link");
+        }
+      } catch (err: any) {
+        setError(
+          err.message || "Đã xảy ra lỗi trong quá trình xử lý liên kết.",
+        );
+        setShowLinkErrorModal(true);
+      } finally {
+        setLoading(false);
+      }
+    } catch (err) {
+      setError("Không thể đọc clipboard. Vui lòng cho phép quyền truy cập.");
+    }
+  };
+
   const handleBankInfoSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const formData = {
@@ -156,8 +248,59 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#fcedde] via-[#ffe8d1] to-[#ffd4a8] text-gray-900 selection:bg-orange-500/30">
-      <div className="flex items-center pt-4 pl-4 md:pt-8 md:pl-8">
+    <div className="min-h-screen bg-gradient-to-br from-[#fcedde] via-[#ffe8d1] to-[#ffd4a8] text-gray-900 selection:bg-orange-500/30 relative overflow-hidden">
+      {/* Voucher Decorations */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+        {/* Top Right Voucher - Large */}
+        <img
+          src="/assets/voucher-25.png"
+          alt=""
+          className="absolute -top-10 -right-10 sm:-top-16 sm:-right-16 w-56 sm:w-80 md:w-96 lg:w-[28rem] opacity-40 rotate-12 animate-float"
+          style={{ animationDuration: "6s" }}
+        />
+
+        {/* Top Left Voucher - Medium */}
+        <img
+          src="/assets/voucher-25.png"
+          alt=""
+          className="absolute top-32 sm:top-40 -left-8 sm:-left-12 w-44 sm:w-60 md:w-72 lg:w-80 opacity-50 -rotate-12 animate-float"
+          style={{ animationDuration: "8s", animationDelay: "1s" }}
+        />
+
+        {/* Middle Right Voucher - Small */}
+        <img
+          src="/assets/voucher-25.png"
+          alt=""
+          className="absolute top-1/3 -right-6 sm:-right-10 w-40 sm:w-52 md:w-64 lg:w-72 opacity-50 rotate-45 animate-float"
+          style={{ animationDuration: "7s", animationDelay: "2s" }}
+        />
+
+        {/* Bottom Left Voucher - Large */}
+        <img
+          src="/assets/voucher-25.png"
+          alt=""
+          className="absolute bottom-20 sm:bottom-32 -left-12 sm:-left-20 w-64 sm:w-80 md:w-[28rem] lg:w-[36rem] opacity-60 -rotate-6 animate-float"
+          style={{ animationDuration: "9s", animationDelay: "0.5s" }}
+        />
+
+        {/* Bottom Right Voucher - Medium */}
+        <img
+          src="/assets/voucher-25.png"
+          alt=""
+          className="absolute bottom-40 sm:bottom-56 -right-8 sm:-right-12 w-48 sm:w-64 md:w-80 lg:w-96 opacity-52 rotate-[20deg] animate-float"
+          style={{ animationDuration: "8.5s", animationDelay: "1.5s" }}
+        />
+
+        {/* Center Background Voucher - Very Large & Faded */}
+        <img
+          src="/assets/voucher-25.png"
+          alt=""
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 sm:w-[40rem] md:w-[52rem] lg:w-[64rem] opacity-25 rotate-3 animate-float"
+          style={{ animationDuration: "12s" }}
+        />
+      </div>
+
+      <div className="relative z-10 flex items-center pt-4 pl-4 md:pt-8 md:pl-8">
         <img
           src="/assets/logo.png"
           alt="JTik Logo"
@@ -178,7 +321,7 @@ function App() {
       </div>
 
       {/* Vùng Hành Động Chính */}
-      <section className="relative pt-12 sm:pt-16 md:pt-20 pb-12 sm:pb-16 md:pb-20 px-4 sm:px-6">
+      <section className="relative z-10 pt-0 px-4 sm:px-6">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-4xl h-[500px] bg-blue-600/10 blur-[120px] -z-10 rounded-full pointer-events-none"></div>
 
         <div className="max-w-3xl mx-auto text-center">
@@ -195,37 +338,50 @@ function App() {
             className="relative mb-8 sm:mb-10 md:mb-12"
           >
             <div className="relative group">
-              <div className="absolute -inset-1 bg-gradient-to-r from-orange-500/50 to-red-500/50 rounded-2xl blur-lg opacity-20 group-focus-within:opacity-100 transition duration-500"></div>
-              <div className="relative flex flex-col bg-gradient-to-r from-orange-100 to-orange-50 p-2 rounded-xl sm:rounded-2xl border-orange-300/40 focus-within:border-orange-500/60 transition-all shadow-lg">
+              <div className="absolute -inset-2 bg-gradient-to-r from-orange-500 to-red-500 rounded-3xl blur-2xl opacity-40 group-focus-within:opacity-100 transition duration-500 animate-pulse"></div>
+              <div className="relative flex flex-col bg-gradient-to-r from-white via-orange-50 to-orange-100 p-3 sm:p-4 rounded-xl sm:rounded-2xl border-2 border-orange-400/60 focus-within:border-orange-500 transition-all shadow-2xl shadow-orange-500/50 backdrop-blur-sm">
                 <div className="flex items-center">
                   <div className="pl-3 sm:pl-4 text-orange-600">
                     <LinkIcon
-                      size={18}
-                      className="sm:w-5 sm:h-5 md:w-[22px] md:h-[22px]"
+                      size={20}
+                      className="sm:w-6 sm:h-6 md:w-[26px] md:h-[26px]"
                     />
                   </div>
                   <div className="flex-1 px-3 sm:px-4 py-1.5 sm:py-2">
-                    <p className="text-[11px] sm:text-xs text-orange-600 font-semibold">
+                    <p className="text-xs sm:text-sm text-orange-700 font-bold">
                       Nhập link Shopee (mỗi link một dòng)
                     </p>
-                    <p className="text-[9px] sm:text-[10px] text-orange-500/70 mt-0.5">
+                    <p className="text-[10px] sm:text-xs text-orange-600/80 mt-0.5 font-medium">
                       Hỗ trợ: shopee.vn, vn.shp.ee, s.shopee.vn
                     </p>
                   </div>
+                  <button
+                    type="button"
+                    onClick={handlePasteAndTransform}
+                    disabled={loading}
+                    className="mr-2 sm:mr-3 p-2.5 sm:p-3 rounded-lg bg-purple-600 hover:bg-purple-700 text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 shadow-xl shadow-purple-500/40 hover:shadow-purple-500/60 border-2 border-purple-400"
+                    title="Paste & Chuyển đổi"
+                  >
+                    {loading ? (
+                      <Loader2 className="animate-spin w-5 h-5 sm:w-6 sm:h-6" />
+                    ) : (
+                      <Clipboard className="w-5 h-5 sm:w-6 sm:h-6" />
+                    )}
+                  </button>
                 </div>
                 <textarea
                   value={urls}
                   onChange={(e) => setUrls(e.target.value)}
                   placeholder="https://shopee.vn/product/...&#10;https://vn.shp.ee/abc123&#10;https://s.shopee.vn/xyz456"
-                  className="w-full bg-transparent border-none focus:ring-0 text-gray-900 px-3 sm:px-4 py-2 text-sm sm:text-base placeholder:text-orange-400/60 resize-none"
+                  className="w-full bg-white/70 backdrop-blur-sm border border-orange-200 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-orange-500 text-gray-900 px-3 sm:px-4 py-3 text-sm sm:text-base placeholder:text-orange-400/70 resize-none font-medium shadow-inner"
                   disabled={loading}
                   rows={5}
                 />
-                <div className="flex justify-stretch sm:justify-end p-2">
+                <div className="flex justify-stretch sm:justify-end p-2 sm:p-3">
                   <button
                     type="submit"
                     disabled={loading || !urls.trim()}
-                    className="w-full sm:w-auto bg-orange-500 text-white font-bold px-6 sm:px-8 py-3 sm:py-4 rounded-xl hover:bg-orange-600 transition-all flex items-center justify-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 shadow-xl shadow-orange-500/30"
+                    className="w-full sm:w-auto bg-gradient-to-r from-orange-500 to-red-500 text-white font-bold px-8 sm:px-10 py-4 sm:py-5 rounded-xl hover:from-orange-600 hover:to-red-600 transition-all flex items-center justify-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 shadow-2xl shadow-orange-500/50 hover:shadow-orange-500/70 border-2 border-orange-400"
                   >
                     {loading ? (
                       <Loader2 className="animate-spin w-[18px] h-[18px] sm:w-5 sm:h-5 md:w-[22px] md:h-[22px]" />
@@ -233,7 +389,7 @@ function App() {
                       <Wand2 className="w-[18px] h-[18px] sm:w-5 sm:h-5 md:w-[22px] md:h-[22px]" />
                     )}
                     <span className="font-bold uppercase tracking-wider text-xs sm:text-sm">
-                      Chuyển Hóa{" "}
+                      Chuyển Đổi{" "}
                       {urls.split("\n").filter((l) => l.trim()).length > 0 &&
                         `(${urls.split("\n").filter((l) => l.trim()).length})`}
                     </span>
@@ -336,6 +492,186 @@ function App() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      </section>
+
+      {/* Join Community Section */}
+      <section className="relative z-10 px-4 sm:px-6">
+        <div className="max-w-4xl mx-auto">
+          {/* Main Card */}
+          <div className="relative group">
+            {/* Glow Effect */}
+            <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 rounded-3xl blur-xl opacity-30 group-hover:opacity-50 transition-all duration-500 animate-pulse"></div>
+
+            {/* Content Card */}
+            <div className="relative bg-gradient-to-br from-gray-900/95 via-blue-900/95 to-purple-900/95 backdrop-blur-lg rounded-2xl sm:rounded-3xl border border-white/10 overflow-hidden">
+              {/* Top Decoration Bar */}
+              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"></div>
+
+              {/* Floating Icons Background */}
+              <div className="absolute inset-0 overflow-hidden opacity-10">
+                <div
+                  className="absolute top-10 left-10 animate-bounce"
+                  style={{ animationDelay: "0s", animationDuration: "3s" }}
+                >
+                  <Gift size={40} className="text-yellow-400" />
+                </div>
+                <div
+                  className="absolute top-20 right-20 animate-bounce"
+                  style={{ animationDelay: "1s", animationDuration: "4s" }}
+                >
+                  <Tag size={35} className="text-pink-400" />
+                </div>
+                <div
+                  className="absolute bottom-10 left-1/4 animate-bounce"
+                  style={{ animationDelay: "2s", animationDuration: "3.5s" }}
+                >
+                  <Zap size={30} className="text-blue-400" />
+                </div>
+              </div>
+
+              <div className="relative p-6 sm:p-8 md:p-10">
+                {/* Header */}
+                <div className="text-center mb-6 sm:mb-8">
+                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-500/30 mb-4 sm:mb-5">
+                    <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400 animate-pulse" />
+                    <span className="text-yellow-400 font-bold text-xs sm:text-sm uppercase tracking-wider">
+                      Độc Quyền
+                    </span>
+                  </div>
+
+                  <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4">
+                    <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+                      Săn Deal & Mã Giảm Giá
+                    </span>
+                  </h2>
+
+                  <p className="text-gray-300 text-sm sm:text-base md:text-lg max-w-2xl mx-auto leading-relaxed">
+                    Tham gia cộng đồng của chúng tôi để nhận{" "}
+                    <span className="text-yellow-400 font-semibold">
+                      mã giảm giá độc quyền
+                    </span>
+                    ,{" "}
+                    <span className="text-pink-400 font-semibold">
+                      deal hot
+                    </span>{" "}
+                    và{" "}
+                    <span className="text-blue-400 font-semibold">
+                      voucher hấp dẫn
+                    </span>{" "}
+                    mỗi ngày!
+                  </p>
+                </div>
+
+                {/* Benefits */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
+                  <div className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 border border-blue-500/20 rounded-xl p-4 text-center">
+                    <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-500/20 rounded-full mb-3">
+                      <Gift className="w-6 h-6 text-blue-400" />
+                    </div>
+                    <h3 className="text-white font-bold text-sm sm:text-base mb-1">
+                      Deal Hàng Ngày
+                    </h3>
+                    <p className="text-gray-400 text-xs sm:text-sm">
+                      Cập nhật liên tục
+                    </p>
+                  </div>
+
+                  <div className="bg-gradient-to-br from-purple-500/10 to-purple-600/5 border border-purple-500/20 rounded-xl p-4 text-center">
+                    <div className="inline-flex items-center justify-center w-12 h-12 bg-purple-500/20 rounded-full mb-3">
+                      <Tag className="w-6 h-6 text-purple-400" />
+                    </div>
+                    <h3 className="text-white font-bold text-sm sm:text-base mb-1">
+                      Mã Độc Quyền
+                    </h3>
+                    <p className="text-gray-400 text-xs sm:text-sm">
+                      Chỉ dành riêng cho thành viên
+                    </p>
+                  </div>
+
+                  <div className="bg-gradient-to-br from-pink-500/10 to-pink-600/5 border border-pink-500/20 rounded-xl p-4 text-center">
+                    <div className="inline-flex items-center justify-center w-12 h-12 bg-pink-500/20 rounded-full mb-3">
+                      <Zap className="w-6 h-6 text-pink-400" />
+                    </div>
+                    <h3 className="text-white font-bold text-sm sm:text-base mb-1">
+                      Hỗ Trợ Nhanh
+                    </h3>
+                    <p className="text-gray-400 text-xs sm:text-sm">
+                      Giải đáp mọi thắc mắc
+                    </p>
+                  </div>
+                </div>
+
+                {/* CTA Buttons */}
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 max-w-2xl mx-auto">
+                  {/* Facebook Button */}
+                  <a
+                    href="https://www.facebook.com/share/p/1BbMjxfQTf/?mibextid=wwXIfr"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 group/btn relative overflow-hidden"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-blue-500 transition-transform group-hover/btn:scale-105"></div>
+                    <div className="relative flex items-center justify-center gap-3 px-6 py-4 sm:py-5">
+                      <div className="p-2 bg-white/20 rounded-lg group-hover/btn:bg-white/30 transition-all">
+                        <Facebook className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-white font-bold text-sm sm:text-base">
+                          Tham Gia Facebook
+                        </p>
+                        <p className="text-blue-100 text-xs">
+                          Cộng đồng săn sale
+                        </p>
+                      </div>
+                      <div className="ml-auto">
+                        <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center group-hover/btn:translate-x-1 transition-transform">
+                          <span className="text-white text-lg">→</span>
+                        </div>
+                      </div>
+                    </div>
+                  </a>
+
+                  {/* Zalo Button */}
+                  <a
+                    href="https://zalo.me/g/ecnlna124"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 group/btn relative overflow-hidden"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-cyan-600 to-blue-500 transition-transform group-hover/btn:scale-105"></div>
+                    <div className="relative flex items-center justify-center gap-3 px-6 py-4 sm:py-5">
+                      <div className="p-2 bg-white/20 rounded-lg group-hover/btn:bg-white/30 transition-all">
+                        <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-white font-bold text-sm sm:text-base">
+                          Tham Gia Zalo
+                        </p>
+                        <p className="text-cyan-100 text-xs">Nhóm ưu đãi hot</p>
+                      </div>
+                      <div className="ml-auto">
+                        <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center group-hover/btn:translate-x-1 transition-transform">
+                          <span className="text-white text-lg">→</span>
+                        </div>
+                      </div>
+                    </div>
+                  </a>
+                </div>
+
+                {/* Footer Note */}
+                <div className="mt-6 sm:mt-8 text-center">
+                  <div className="inline-flex items-center gap-2 text-gray-400 text-xs sm:text-sm">
+                    <Users className="w-4 h-4" />
+                    <span>
+                      Đã có hơn <strong className="text-white">1,000+</strong>{" "}
+                      thành viên săn voucher thành công
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
