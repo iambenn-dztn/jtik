@@ -51,6 +51,9 @@ class MongoDBService {
   private accounts: Collection<Account> | null = null;
   private admins: Collection<AdminUser> | null = null;
   private connected: boolean = false;
+  private reconnecting: boolean = false;
+  private reconnectAttempts: number = 0;
+  private maxReconnectAttempts: number = 5;
 
   constructor() {
     console.log("MongoDB URI:", MONGODB_URI);
@@ -64,6 +67,22 @@ class MongoDBService {
       minPoolSize: 2,
       tls: true,
       tlsAllowInvalidCertificates: false,
+    });
+
+    // Setup event listeners for connection issues
+    this.client.on('close', () => {
+      console.warn('⚠️ MongoDB connection closed');
+      this.connected = false;
+    });
+
+    this.client.on('error', (error) => {
+      console.error('❌ MongoDB connection error:', error);
+      this.connected = false;
+    });
+
+    this.client.on('timeout', () => {
+      console.warn('⏱️ MongoDB connection timeout');
+      this.connected = false;
     });
   }
 
@@ -100,123 +119,261 @@ class MongoDBService {
   }
 
   async disconnect(): Promise<void> {
-    if (this.client) {
-      await this.client.close();
-      this.connected = false;
-      console.log("MongoDB connection closed");
+    try {
+      if (this.client) {
+        await this.client.close();
+        this.connected = false;
+        this.db = null;
+        this.customers = null;
+        this.accounts = null;
+        this.admins = null;
+        console.log("MongoDB connection closed gracefully");
+      }
+    } catch (error) {
+      console.error("Error closing MongoDB connection:", error);
     }
   }
 
-  private ensureConnected(): void {
-    if (!this.connected || !this.customers || !this.accounts || !this.admins) {
-      throw new Error("Database not connected. Call connect() first.");
+  private async isHealthy(): Promise<boolean> {
+    try {
+      if (!this.db) return false;
+      await this.db.admin().ping();
+      return true;
+    } catch (error) {
+      return false;
     }
+  }
+
+  private async reconnect(): Promise<void> {
+    if (this.reconnecting) {
+      // Already reconnecting, wait
+      let attempts = 0;
+      while (this.reconnecting && attempts < 50) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        attempts++;
+      }
+      return;
+    }
+
+    this.reconnecting = true;
+
+    try {
+      if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+        throw new Error(`Failed to reconnect after ${this.maxReconnectAttempts} attempts`);
+      }
+
+      this.reconnectAttempts++;
+      console.log(`🔄 Reconnecting to MongoDB (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})...`);
+
+      // Close existing connection
+      try {
+        await this.client.close();
+      } catch (e) {
+        console.log("Error closing existing connection:", e);
+      }
+
+      // Create new client
+      this.client = new MongoClient(MONGODB_URI, {
+        serverSelectionTimeoutMS: 30000,
+        socketTimeoutMS: 45000,
+        connectTimeoutMS: 30000,
+        retryWrites: true,
+        retryReads: true,
+        maxPoolSize: 10,
+        minPoolSize: 2,
+        tls: true,
+        tlsAllowInvalidCertificates: false,
+      });
+
+      this.connected = false;
+      await this.connect();
+      this.reconnectAttempts = 0; // Reset on success
+      console.log("✅ Reconnection successful");
+    } catch (error) {
+      console.error(`❌ Reconnection attempt ${this.reconnectAttempts} failed:`, error);
+      throw error;
+    } finally {
+      this.reconnecting = false;
+    }
+  }
+
+  private async ensureConnected(): Promise<void> {
+    // If reconnecting, wait
+    if (this.reconnecting) {
+      let attempts = 0;
+      while (this.reconnecting && attempts < 50) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        attempts++;
+      }
+      return;
+    }
+
+    if (!this.connected || !this.customers || !this.accounts || !this.admins) {
+      console.warn("⚠️ Database not connected, attempting reconnection...");
+      await this.reconnect();
+      return;
+    }
+
+    // Health check
+    const healthy = await this.isHealthy();
+    if (!healthy) {
+      console.warn("⚠️ Health check failed, reconnecting...");
+      await this.reconnect();
+    }
+  }
+
+  private async withRetry<T>(operation: () => Promise<T>, operationName: string = "operation"): Promise<T> {
+    let lastError: any;
+    
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        await this.ensureConnected();
+        return await operation();
+      } catch (error: any) {
+        lastError = error;
+        console.error(`${operationName} failed (attempt ${attempt}/3):`, error.message);
+        
+        // Check if it's a connection error
+        if (error.name === 'MongoTopologyClosedError' || 
+            error.name === 'MongoNetworkError' ||
+            error.message?.includes('Topology is closed')) {
+          this.connected = false;
+          if (attempt < 3) {
+            await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+            continue;
+          }
+        }
+        throw error;
+      }
+    }
+    
+    throw lastError;
   }
 
   // ==================== CUSTOMER METHODS ====================
 
   async getCustomers(): Promise<Customer[]> {
-    this.ensureConnected();
-    return await this.customers!.find({ status: { $ne: "deleted" } }).toArray();
+    return this.withRetry(
+      () => this.customers!.find({ status: { $ne: "deleted" } }).toArray(),
+      "getCustomers"
+    );
   }
 
   async getAllCustomers(): Promise<Customer[]> {
-    this.ensureConnected();
-    return await this.customers!.find({}).toArray();
+    return this.withRetry(
+      () => this.customers!.find({}).toArray(),
+      "getAllCustomers"
+    );
   }
 
   async getCustomerById(id: string): Promise<Customer | null> {
-    this.ensureConnected();
-    return await this.customers!.findOne({ id, status: { $ne: "deleted" } });
+    return this.withRetry(
+      () => this.customers!.findOne({ id, status: { $ne: "deleted" } }),
+      "getCustomerById"
+    );
   }
 
   async getCustomerByOrderId(orderId: string): Promise<Customer | null> {
-    this.ensureConnected();
-    return await this.customers!.findOne({
-      orderId,
-      status: { $ne: "deleted" },
-    });
+    return this.withRetry(
+      () => this.customers!.findOne({
+        orderId,
+        status: { $ne: "deleted" },
+      }),
+      "getCustomerByOrderId"
+    );
   }
 
   async getFilteredCustomers(filters: {
     status?: "active" | "paid" | "deleted";
     search?: string;
   }): Promise<Customer[]> {
-    this.ensureConnected();
+    return this.withRetry(
+      async () => {
+        const query: any = {};
 
-    const query: any = {};
+        if (filters.status) {
+          query.status = filters.status;
+        } else {
+          query.status = { $ne: "deleted" };
+        }
 
-    if (filters.status) {
-      query.status = filters.status;
-    } else {
-      query.status = { $ne: "deleted" };
-    }
+        if (filters.search) {
+          const searchRegex = { $regex: filters.search, $options: "i" };
+          query.$or = [
+            { phone: searchRegex },
+            { orderId: searchRegex },
+            { accountName: searchRegex },
+            { bankName: searchRegex },
+          ];
+        }
 
-    if (filters.search) {
-      const searchRegex = { $regex: filters.search, $options: "i" };
-      query.$or = [
-        { phone: searchRegex },
-        { orderId: searchRegex },
-        { accountName: searchRegex },
-        { bankName: searchRegex },
-      ];
-    }
-
-    return await this.customers!.find(query).sort({ createdAt: -1 }).toArray();
+        return await this.customers!.find(query).sort({ createdAt: -1 }).toArray();
+      },
+      "getFilteredCustomers"
+    );
   }
 
   async insertCustomer(
     customer: Omit<Customer, "id" | "status" | "createdAt" | "updatedAt">,
   ): Promise<Customer> {
-    this.ensureConnected();
+    return this.withRetry(
+      async () => {
+        const now = new Date().toISOString();
+        const newCustomer: Customer = {
+          id: this.generateId(),
+          ...customer,
+          status: "active",
+          createdAt: now,
+          updatedAt: now,
+        };
 
-    const now = new Date().toISOString();
-    const newCustomer: Customer = {
-      id: this.generateId(),
-      ...customer,
-      status: "active",
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    await this.customers!.insertOne(newCustomer);
-    return newCustomer;
+        await this.customers!.insertOne(newCustomer);
+        return newCustomer;
+      },
+      "insertCustomer"
+    );
   }
 
   async updateCustomerStatus(
     id: string,
     status: "active" | "paid" | "deleted",
   ): Promise<Customer | null> {
-    this.ensureConnected();
+    return this.withRetry(
+      async () => {
+        const result = await this.customers!.findOneAndUpdate(
+          { id },
+          {
+            $set: {
+              status,
+              updatedAt: new Date().toISOString(),
+            },
+          },
+          { returnDocument: "after" },
+        );
 
-    const result = await this.customers!.findOneAndUpdate(
-      { id },
-      {
-        $set: {
-          status,
-          updatedAt: new Date().toISOString(),
-        },
+        return result || null;
       },
-      { returnDocument: "after" },
+      "updateCustomerStatus"
     );
-
-    return result || null;
   }
 
   async deleteCustomer(id: string): Promise<boolean> {
-    this.ensureConnected();
+    return this.withRetry(
+      async () => {
+        const result = await this.customers!.updateOne(
+          { id },
+          {
+            $set: {
+              status: "deleted",
+              updatedAt: new Date().toISOString(),
+            },
+          },
+        );
 
-    const result = await this.customers!.updateOne(
-      { id },
-      {
-        $set: {
-          status: "deleted",
-          updatedAt: new Date().toISOString(),
-        },
+        return result.modifiedCount > 0;
       },
+      "deleteCustomer"
     );
-
-    return result.modifiedCount > 0;
   }
 
   async getStatistics(): Promise<{
@@ -225,143 +382,171 @@ class MongoDBService {
     paid: number;
     deleted: number;
   }> {
-    this.ensureConnected();
+    return this.withRetry(
+      async () => {
+        const [total, active, paid, deleted] = await Promise.all([
+          this.customers!.countDocuments({}),
+          this.customers!.countDocuments({ status: "active" }),
+          this.customers!.countDocuments({ status: "paid" }),
+          this.customers!.countDocuments({ status: "deleted" }),
+        ]);
 
-    const [total, active, paid, deleted] = await Promise.all([
-      this.customers!.countDocuments({}),
-      this.customers!.countDocuments({ status: "active" }),
-      this.customers!.countDocuments({ status: "paid" }),
-      this.customers!.countDocuments({ status: "deleted" }),
-    ]);
-
-    return { total, active, paid, deleted };
+        return { total, active, paid, deleted };
+      },
+      "getStatistics"
+    );
   }
 
   // ==================== ACCOUNT METHODS ====================
 
   async getAccounts(): Promise<Account[]> {
-    this.ensureConnected();
-    return await this.accounts!.find({ status: { $ne: "deleted" } }).toArray();
+    return this.withRetry(
+      () => this.accounts!.find({ status: { $ne: "deleted" } }).toArray(),
+      "getAccounts"
+    );
   }
 
   async getAllAccounts(): Promise<Account[]> {
-    this.ensureConnected();
-    return await this.accounts!.find({}).toArray();
+    return this.withRetry(
+      () => this.accounts!.find({}).toArray(),
+      "getAllAccounts"
+    );
   }
 
   async getAccountById(id: string): Promise<Account | null> {
-    this.ensureConnected();
-    return await this.accounts!.findOne({ id, status: { $ne: "deleted" } });
+    return this.withRetry(
+      () => this.accounts!.findOne({ id, status: { $ne: "deleted" } }),
+      "getAccountById"
+    );
   }
 
   async getAccountByUsername(username: string): Promise<Account | null> {
-    this.ensureConnected();
-    return await this.accounts!.findOne({
-      username,
-      status: { $ne: "deleted" },
-    });
+    return this.withRetry(
+      () => this.accounts!.findOne({
+        username,
+        status: { $ne: "deleted" },
+      }),
+      "getAccountByUsername"
+    );
   }
 
   async getFirstActiveAccount(): Promise<Account | null> {
-    this.ensureConnected();
-    return await this.accounts!.findOne({
-      status: "active",
-    });
+    return this.withRetry(
+      () => this.accounts!.findOne({
+        status: "active",
+      }),
+      "getFirstActiveAccount"
+    );
   }
 
   async getFilteredAccounts(filters: {
     status?: "active" | "inactive" | "deleted";
     search?: string;
   }): Promise<Account[]> {
-    this.ensureConnected();
+    return this.withRetry(
+      async () => {
+        const query: any = {};
 
-    const query: any = {};
+        if (filters.status) {
+          query.status = filters.status;
+        } else {
+          query.status = { $ne: "deleted" };
+        }
 
-    if (filters.status) {
-      query.status = filters.status;
-    } else {
-      query.status = { $ne: "deleted" };
-    }
+        if (filters.search) {
+          query.username = { $regex: filters.search, $options: "i" };
+        }
 
-    if (filters.search) {
-      query.username = { $regex: filters.search, $options: "i" };
-    }
-
-    return await this.accounts!.find(query).sort({ createdAt: -1 }).toArray();
+        return await this.accounts!.find(query).sort({ createdAt: -1 }).toArray();
+      },
+      "getFilteredAccounts"
+    );
   }
 
   async insertAccount(
     account: Omit<Account, "id" | "status" | "createdAt" | "updatedAt">,
   ): Promise<Account> {
-    this.ensureConnected();
+    return this.withRetry(
+      async () => {
+        const now = new Date().toISOString();
+        const newAccount: Account = {
+          id: this.generateId(),
+          ...account,
+          status: "active",
+          createdAt: now,
+          updatedAt: now,
+        };
 
-    const now = new Date().toISOString();
-    const newAccount: Account = {
-      id: this.generateId(),
-      ...account,
-      status: "active",
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    await this.accounts!.insertOne(newAccount);
-    return newAccount;
+        await this.accounts!.insertOne(newAccount);
+        return newAccount;
+      },
+      "insertAccount"
+    );
   }
 
   async updateAccount(
     id: string,
     updates: Partial<Omit<Account, "id" | "createdAt">>,
   ): Promise<Account | null> {
-    this.ensureConnected();
+    return this.withRetry(
+      async () => {
+        const result = await this.accounts!.findOneAndUpdate(
+          { id },
+          {
+            $set: {
+              ...updates,
+              updatedAt: new Date().toISOString(),
+            },
+          },
+          { returnDocument: "after" },
+        );
 
-    const result = await this.accounts!.findOneAndUpdate(
-      { id },
-      {
-        $set: {
-          ...updates,
-          updatedAt: new Date().toISOString(),
-        },
+        return result || null;
       },
-      { returnDocument: "after" },
+      "updateAccount"
     );
-
-    return result || null;
   }
 
   async updateAccountStatus(
     id: string,
     status: "active" | "inactive" | "deleted",
   ): Promise<Account | null> {
-    this.ensureConnected();
+    return this.withRetry(
+      async () => {
+        const result = await this.accounts!.findOneAndUpdate(
+          { id },
+          {
+            $set: {
+              status,
+              updatedAt: new Date().toISOString(),
+            },
+          },
+          { returnDocument: "after" },
+        );
 
-    const result = await this.accounts!.findOneAndUpdate(
-      { id },
-      {
-        $set: {
-          status,
-          updatedAt: new Date().toISOString(),
-        },
+        return result || null;
       },
-      { returnDocument: "after" },
+      "updateAccountStatus"
     );
-
-    return result || null;
   }
 
   async deleteAccount(id: string): Promise<boolean> {
-    this.ensureConnected();
+    return this.withRetry(
+      async () => {
+        const result = await this.accounts!.updateOne(
+          { id },
+          {
+            $set: {
+              status: "deleted",
+              updatedAt: new Date().toISOString(),
+            },
+          },
+        );
 
-    const result = await this.accounts!.updateOne(
-      { id },
-      {
-        $set: {
-          status: "deleted",
-          updatedAt: new Date().toISOString(),
-        },
+        return result.modifiedCount > 0;
       },
+      "deleteAccount"
     );
-
-    return result.modifiedCount > 0;
   }
 
   // ==================== UTILITY METHODS ====================
@@ -373,78 +558,93 @@ class MongoDBService {
   // ==================== ADMIN METHODS ====================
 
   async getAdminByUsername(username: string): Promise<AdminUser | null> {
-    this.ensureConnected();
-    return await this.admins!.findOne({
-      username,
-      status: "active",
-    });
+    return this.withRetry(
+      () => this.admins!.findOne({
+        username,
+        status: "active",
+      }),
+      "getAdminByUsername"
+    );
   }
 
   async getAdminById(id: string): Promise<AdminUser | null> {
-    this.ensureConnected();
-    return await this.admins!.findOne({
-      id,
-      status: "active",
-    });
+    return this.withRetry(
+      () => this.admins!.findOne({
+        id,
+        status: "active",
+      }),
+      "getAdminById"
+    );
   }
 
   async getAllAdmins(): Promise<AdminUser[]> {
-    this.ensureConnected();
-    return await this.admins!.find({ status: "active" }).toArray();
+    return this.withRetry(
+      () => this.admins!.find({ status: "active" }).toArray(),
+      "getAllAdmins"
+    );
   }
 
   async insertAdmin(
     admin: Omit<AdminUser, "id" | "createdAt" | "updatedAt">,
   ): Promise<AdminUser> {
-    this.ensureConnected();
+    return this.withRetry(
+      async () => {
+        const now = new Date().toISOString();
+        const newAdmin: AdminUser = {
+          id: this.generateId(),
+          ...admin,
+          createdAt: now,
+          updatedAt: now,
+        };
 
-    const now = new Date().toISOString();
-    const newAdmin: AdminUser = {
-      id: this.generateId(),
-      ...admin,
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    await this.admins!.insertOne(newAdmin);
-    return newAdmin;
+        await this.admins!.insertOne(newAdmin);
+        return newAdmin;
+      },
+      "insertAdmin"
+    );
   }
 
   async updateAdminLastLogin(id: string): Promise<AdminUser | null> {
-    this.ensureConnected();
+    return this.withRetry(
+      async () => {
+        const result = await this.admins!.findOneAndUpdate(
+          { id },
+          {
+            $set: {
+              lastLogin: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            },
+          },
+          { returnDocument: "after" },
+        );
 
-    const result = await this.admins!.findOneAndUpdate(
-      { id },
-      {
-        $set: {
-          lastLogin: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
+        return result || null;
       },
-      { returnDocument: "after" },
+      "updateAdminLastLogin"
     );
-
-    return result || null;
   }
 
   async updateAdminPassword(
     id: string,
     hashedPassword: string,
   ): Promise<AdminUser | null> {
-    this.ensureConnected();
+    return this.withRetry(
+      async () => {
+        const result = await this.admins!.findOneAndUpdate(
+          { id },
+          {
+            $set: {
+              password: hashedPassword,
+              updatedAt: new Date().toISOString(),
+            },
+          },
+          { returnDocument: "after" },
+        );
 
-    const result = await this.admins!.findOneAndUpdate(
-      { id },
-      {
-        $set: {
-          password: hashedPassword,
-          updatedAt: new Date().toISOString(),
-        },
+        return result || null;
       },
-      { returnDocument: "after" },
+      "updateAdminPassword"
     );
-
-    return result || null;
   }
 }
 
