@@ -7,7 +7,6 @@ import {
   Gift,
   Link as LinkIcon,
   Loader2,
-  MessageCircle,
   Package,
   Phone,
   RefreshCw,
@@ -314,7 +313,7 @@ function App() {
             className="px-4 py-2 md:px-6 md:py-3 rounded-xl bg-gradient-to-r from-orange-500 to-red-500 text-white font-bold hover:from-orange-600 hover:to-red-600 transition-all flex items-center gap-1.5 md:gap-2 shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 active:scale-95 text-xs md:text-sm"
           >
             <RefreshCw size={14} className="md:w-4 md:h-4" />
-            <span className="hidden sm:inline">Hoàn tiền</span>
+            <span className="hidden sm:inline">Giảm Giá</span>
             <span className="sm:hidden">Hoàn $</span>
           </button>
         </div>
@@ -325,18 +324,11 @@ function App() {
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-4xl h-[500px] bg-blue-600/10 blur-[120px] -z-10 rounded-full pointer-events-none"></div>
 
         <div className="max-w-3xl mx-auto text-center">
-          <div className="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[9px] sm:text-[10px] font-bold mb-4 sm:mb-6 md:mb-8 tracking-widest uppercase">
-            <Sparkles size={10} className="sm:w-3 sm:h-3" /> Hoàn tiền Shoppee
-          </div>
-
           <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-6xl font-bold mb-4 sm:mb-6 md:mb-8 tracking-tight px-2">
-            <span className="gradient-text">Tạo Link Hoàn Tiền</span>
+            <span className="gradient-text">Tạo Link Giảm Giá</span>
           </h1>
 
-          <form
-            onSubmit={handleProcessLink}
-            className="relative mb-8 sm:mb-10 md:mb-12"
-          >
+          <form onSubmit={handleProcessLink} className="relative">
             <div className="relative group">
               <div className="absolute -inset-2 bg-gradient-to-r from-orange-500 to-red-500 rounded-3xl blur-2xl opacity-40 group-focus-within:opacity-100 transition duration-500 animate-pulse"></div>
               <div className="relative flex flex-col bg-gradient-to-r from-white via-orange-50 to-orange-100 p-3 sm:p-4 rounded-xl sm:rounded-2xl border-2 border-orange-400/60 focus-within:border-orange-500 transition-all shadow-2xl shadow-orange-500/50 backdrop-blur-sm">
@@ -395,6 +387,131 @@ function App() {
                     </span>
                   </button>
                 </div>
+
+                {/* Vùng Kết Quả */}
+                <div
+                  className={`transition-all duration-700 transform ${
+                    results.length > 0
+                      ? "opacity-100 translate-y-0 scale-100"
+                      : "opacity-0 translate-y-4 scale-95 pointer-events-none h-0 overflow-hidden"
+                  }`}
+                >
+                  {results.length > 0 && (
+                    <div className="glass p-1 sm:p-6 rounded-2xl sm:rounded-3xl border-blue-500/30 relative overflow-hidden mb-4">
+                      <div className="space-y-2 sm:space-y-3 max-h-[500px] overflow-y-auto">
+                        {results.map((result, index) => (
+                          <div
+                            key={index}
+                            className="w-full bg-black/50 border border-white/5 p-3 sm:p-4 rounded-xl sm:rounded-2xl"
+                          >
+                            {result.shortLink ? (
+                              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+                                <div className="text-left overflow-hidden w-full">
+                                  <p className="text-[9px] sm:text-[10px] text-blue-400 font-bold uppercase tracking-widest mb-1">
+                                    Link #{index + 1}
+                                  </p>
+                                  <p className="text-[10px] sm:text-xs text-gray-400 truncate mb-1.5 sm:mb-2">
+                                    {result.originalLink}
+                                  </p>
+                                  <p className="text-xs sm:text-sm font-mono text-white truncate">
+                                    {result.shortLink}
+                                  </p>
+                                </div>
+                                <div className="flex gap-2 w-full sm:w-auto">
+                                  <button
+                                    onClick={() =>
+                                      handleCopyToClipboard(result.shortLink)
+                                    }
+                                    className="flex-1 sm:flex-none bg-gray-600 hover:bg-gray-500 text-white px-3 sm:px-4 py-2 rounded-lg sm:rounded-xl flex items-center gap-1.5 sm:gap-2 font-bold transition-all text-xs sm:text-sm justify-center"
+                                    title="Copy link"
+                                  >
+                                    <LinkIcon size={14} className="sm:w-4 sm:h-4" />
+                                    Copy
+                                  </button>
+                                  <button
+                                    onClick={() => handleCopy(result.shortLink)}
+                                    className="flex-1 sm:flex-none bg-blue-500 hover:bg-blue-400 text-white px-3 sm:px-4 py-2 rounded-lg sm:rounded-xl flex items-center gap-1.5 sm:gap-2 font-bold transition-all text-xs sm:text-sm justify-center"
+                                  >
+                                    <ShoppingCart
+                                      size={14}
+                                      className="sm:w-4 sm:h-4"
+                                    />
+                                    Mua
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="text-left">
+                                <p className="text-[9px] sm:text-[10px] text-red-400 font-bold uppercase tracking-widest mb-1">
+                                  Link #{index + 1} - Lỗi
+                                </p>
+                                <p className="text-[10px] sm:text-xs text-gray-400 truncate mb-1">
+                                  {result.originalLink}
+                                </p>
+                                <p className="text-xs sm:text-sm text-red-400">
+                                  {result.error || "Không thể chuyển đổi"}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Social Links */}
+                <div className="flex gap-2 sm:gap-3">
+                  {/* Facebook Button */}
+                  <a
+                    href="https://www.facebook.com/share/p/1BbMjxfQTf/?mibextid=wwXIfr"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 group/social relative overflow-hidden rounded-lg"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-blue-500 opacity-90 group-hover/social:opacity-100 transition-all"></div>
+                    <div className="relative flex items-center justify-center gap-2 px-3 py-2.5 sm:px-4 sm:py-3">
+                      <div className="p-1.5 bg-white/20 rounded-md group-hover/social:bg-white/30 transition-all">
+                        <Facebook className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                      </div>
+                      <div className="flex-1 text-left">
+                        <p className="text-white font-bold text-xs sm:text-sm leading-tight whitespace-nowrap">
+                          Quay lại bài đăng
+                        </p>
+                        <p className="text-blue-100 text-[10px] sm:text-xs leading-tight hidden sm:block whitespace-nowrap">
+                          Săn sale
+                        </p>
+                      </div>
+                    </div>
+                  </a>
+
+                  {/* Zalo Button */}
+                  <a
+                    href="https://zalo.me/g/ecnlna124"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 group/social relative overflow-hidden rounded-lg"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-cyan-600 to-blue-500 opacity-90 group-hover/social:opacity-100 transition-all"></div>
+                    <div className="relative flex items-center justify-center gap-2 px-3 py-2.5 sm:px-4 sm:py-3">
+                      <div className="p-1.5 bg-white/20 rounded-md group-hover/social:bg-white/30 transition-all">
+                        <img
+                          src="/assets/zalo-icon.png"
+                          alt="Zalo"
+                          className="w-4 h-4 sm:w-5 sm:h-5 object-contain"
+                        />
+                      </div>
+                      <div className="flex-1 text-left">
+                        <p className="text-white font-bold text-xs sm:text-sm leading-tight">
+                          Nhóm săn voucher
+                        </p>
+                        <p className="text-cyan-100 text-[10px] sm:text-xs leading-tight hidden sm:block">
+                          Ưu đãi hot
+                        </p>
+                      </div>
+                    </div>
+                  </a>
+                </div>
               </div>
             </div>
             {error && (
@@ -404,94 +521,16 @@ function App() {
             )}
           </form>
 
-          {/* Vùng Kết Quả */}
-          <div
-            className={`transition-all duration-700 transform ${
-              results.length > 0
-                ? "opacity-100 translate-y-0 scale-100"
-                : "opacity-0 translate-y-4 scale-95 pointer-events-none absolute"
-            }`}
-          >
-            {results.length > 0 && (
-              <div className="glass p-4 sm:p-6 rounded-2xl sm:rounded-3xl border-blue-500/30 relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-purple-500"></div>
-                <button
-                  onClick={() => setResults([])}
-                  className="absolute top-3 right-3 sm:top-4 sm:right-4 text-zinc-500 hover:text-white transition-colors p-1 hover:bg-white/10 rounded-lg"
-                >
-                  <X size={18} className="sm:w-5 sm:h-5" />
-                </button>
-
-                <div className="flex flex-col items-center text-center mb-3 sm:mb-4">
-                  <div className="p-2 sm:p-3 bg-blue-500/10 rounded-xl sm:rounded-2xl text-blue-400 mb-3 sm:mb-4">
-                    <Share2 size={24} className="sm:w-7 sm:h-7 md:w-8 md:h-8" />
-                  </div>
-                  <h3 className="text-base sm:text-lg md:text-xl font-bold text-white mb-2">
-                    ✅ Đã chuyển đổi {results.filter((r) => r.shortLink).length}
-                    /{results.length} link
-                  </h3>
-                </div>
-
-                <div className="space-y-2 sm:space-y-3 max-h-[500px] overflow-y-auto">
-                  {results.map((result, index) => (
-                    <div
-                      key={index}
-                      className="w-full bg-black/50 border border-white/5 p-3 sm:p-4 rounded-xl sm:rounded-2xl"
-                    >
-                      {result.shortLink ? (
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
-                          <div className="text-left overflow-hidden w-full">
-                            <p className="text-[9px] sm:text-[10px] text-blue-400 font-bold uppercase tracking-widest mb-1">
-                              Link #{index + 1}
-                            </p>
-                            <p className="text-[10px] sm:text-xs text-gray-400 truncate mb-1.5 sm:mb-2">
-                              {result.originalLink}
-                            </p>
-                            <p className="text-xs sm:text-sm font-mono text-white truncate">
-                              {result.shortLink}
-                            </p>
-                          </div>
-                          <div className="flex gap-2 w-full sm:w-auto">
-                            <button
-                              onClick={() =>
-                                handleCopyToClipboard(result.shortLink)
-                              }
-                              className="flex-1 sm:flex-none bg-gray-600 hover:bg-gray-500 text-white px-3 sm:px-4 py-2 rounded-lg sm:rounded-xl flex items-center gap-1.5 sm:gap-2 font-bold transition-all text-xs sm:text-sm justify-center"
-                              title="Copy link"
-                            >
-                              <LinkIcon size={14} className="sm:w-4 sm:h-4" />
-                              Copy
-                            </button>
-                            <button
-                              onClick={() => handleCopy(result.shortLink)}
-                              className="flex-1 sm:flex-none bg-blue-500 hover:bg-blue-400 text-white px-3 sm:px-4 py-2 rounded-lg sm:rounded-xl flex items-center gap-1.5 sm:gap-2 font-bold transition-all text-xs sm:text-sm justify-center"
-                            >
-                              <ShoppingCart
-                                size={14}
-                                className="sm:w-4 sm:h-4"
-                              />
-                              Mua
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="text-left">
-                          <p className="text-[9px] sm:text-[10px] text-red-400 font-bold uppercase tracking-widest mb-1">
-                            Link #{index + 1} - Lỗi
-                          </p>
-                          <p className="text-[10px] sm:text-xs text-gray-400 truncate mb-1">
-                            {result.originalLink}
-                          </p>
-                          <p className="text-xs sm:text-sm text-red-400">
-                            {result.error || "Không thể chuyển đổi"}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+          {/* Voucher Decoration */}
+          <div className="flex justify-center items-center my-2 sm:my-8 rounded-md">
+            <div className="relative">
+              {/* Voucher image */}
+              <img
+                src="/assets/voucher-25.png"
+                alt="Voucher 25%"
+                className="w-100 sm:w-56 md:w-64 lg:w-72 object-contain drop-shadow-lg"
+              />
+            </div>
           </div>
         </div>
       </section>
@@ -531,23 +570,23 @@ function App() {
                 </div>
               </div>
 
-              <div className="relative p-6 sm:p-8 md:p-10">
+              <div className="relative p-4 sm:p-6 md:p-8">
                 {/* Header */}
-                <div className="text-center mb-6 sm:mb-8">
-                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-500/30 mb-4 sm:mb-5">
-                    <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400 animate-pulse" />
-                    <span className="text-yellow-400 font-bold text-xs sm:text-sm uppercase tracking-wider">
+                <div className="text-center mb-4 sm:mb-6">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-500/30 mb-3 sm:mb-4">
+                    <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 text-yellow-400 animate-pulse" />
+                    <span className="text-yellow-400 font-bold text-[10px] sm:text-xs uppercase tracking-wider">
                       Độc Quyền
                     </span>
                   </div>
 
-                  <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4">
+                  <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-2 sm:mb-3">
                     <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
                       Săn Deal & Mã Giảm Giá
                     </span>
                   </h2>
 
-                  <p className="text-gray-300 text-sm sm:text-base md:text-lg max-w-2xl mx-auto leading-relaxed">
+                  <p className="text-gray-300 text-xs sm:text-sm md:text-base max-w-2xl mx-auto leading-relaxed hidden sm:block">
                     Tham gia cộng đồng của chúng tôi để nhận{" "}
                     <span className="text-yellow-400 font-semibold">
                       mã giảm giá độc quyền
@@ -565,108 +604,53 @@ function App() {
                 </div>
 
                 {/* Benefits */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
-                  <div className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 border border-blue-500/20 rounded-xl p-4 text-center">
-                    <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-500/20 rounded-full mb-3">
-                      <Gift className="w-6 h-6 text-blue-400" />
+                <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4 sm:mb-6">
+                  <div className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 border border-blue-500/20 rounded-lg sm:rounded-xl p-2 sm:p-3 text-center">
+                    <div className="inline-flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 bg-blue-500/20 rounded-full mb-1.5 sm:mb-2">
+                      <Gift className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400" />
                     </div>
-                    <h3 className="text-white font-bold text-sm sm:text-base mb-1">
+                    <h3 className="text-white font-bold text-[10px] sm:text-xs md:text-sm mb-0.5 sm:mb-1">
                       Deal Hàng Ngày
                     </h3>
-                    <p className="text-gray-400 text-xs sm:text-sm">
+                    <p className="text-gray-400 text-[9px] sm:text-xs hidden sm:block">
                       Cập nhật liên tục
                     </p>
                   </div>
 
-                  <div className="bg-gradient-to-br from-purple-500/10 to-purple-600/5 border border-purple-500/20 rounded-xl p-4 text-center">
-                    <div className="inline-flex items-center justify-center w-12 h-12 bg-purple-500/20 rounded-full mb-3">
-                      <Tag className="w-6 h-6 text-purple-400" />
+                  <div className="bg-gradient-to-br from-purple-500/10 to-purple-600/5 border border-purple-500/20 rounded-lg sm:rounded-xl p-2 sm:p-3 text-center">
+                    <div className="inline-flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 bg-purple-500/20 rounded-full mb-1.5 sm:mb-2">
+                      <Tag className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
                     </div>
-                    <h3 className="text-white font-bold text-sm sm:text-base mb-1">
+                    <h3 className="text-white font-bold text-[10px] sm:text-xs md:text-sm mb-0.5 sm:mb-1">
                       Mã Độc Quyền
                     </h3>
-                    <p className="text-gray-400 text-xs sm:text-sm">
+                    <p className="text-gray-400 text-[9px] sm:text-xs hidden sm:block">
                       Chỉ dành riêng cho thành viên
                     </p>
                   </div>
 
-                  <div className="bg-gradient-to-br from-pink-500/10 to-pink-600/5 border border-pink-500/20 rounded-xl p-4 text-center">
-                    <div className="inline-flex items-center justify-center w-12 h-12 bg-pink-500/20 rounded-full mb-3">
-                      <Zap className="w-6 h-6 text-pink-400" />
+                  <div className="bg-gradient-to-br from-pink-500/10 to-pink-600/5 border border-pink-500/20 rounded-lg sm:rounded-xl p-2 sm:p-3 text-center">
+                    <div className="inline-flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 bg-pink-500/20 rounded-full mb-1.5 sm:mb-2">
+                      <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-pink-400" />
                     </div>
-                    <h3 className="text-white font-bold text-sm sm:text-base mb-1">
+                    <h3 className="text-white font-bold text-[10px] sm:text-xs md:text-sm mb-0.5 sm:mb-1">
                       Hỗ Trợ Nhanh
                     </h3>
-                    <p className="text-gray-400 text-xs sm:text-sm">
+                    <p className="text-gray-400 text-[9px] sm:text-xs hidden sm:block">
                       Giải đáp mọi thắc mắc
                     </p>
                   </div>
                 </div>
 
-                {/* CTA Buttons */}
-                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 max-w-2xl mx-auto">
-                  {/* Facebook Button */}
-                  <a
-                    href="https://www.facebook.com/share/p/1BbMjxfQTf/?mibextid=wwXIfr"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-1 group/btn relative overflow-hidden"
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-blue-500 transition-transform group-hover/btn:scale-105"></div>
-                    <div className="relative flex items-center justify-center gap-3 px-6 py-4 sm:py-5">
-                      <div className="p-2 bg-white/20 rounded-lg group-hover/btn:bg-white/30 transition-all">
-                        <Facebook className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-                      </div>
-                      <div className="text-left">
-                        <p className="text-white font-bold text-sm sm:text-base">
-                          Tham Gia Facebook
-                        </p>
-                        <p className="text-blue-100 text-xs">
-                          Cộng đồng săn sale
-                        </p>
-                      </div>
-                      <div className="ml-auto">
-                        <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center group-hover/btn:translate-x-1 transition-transform">
-                          <span className="text-white text-lg">→</span>
-                        </div>
-                      </div>
-                    </div>
-                  </a>
-
-                  {/* Zalo Button */}
-                  <a
-                    href="https://zalo.me/g/ecnlna124"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-1 group/btn relative overflow-hidden"
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-r from-cyan-600 to-blue-500 transition-transform group-hover/btn:scale-105"></div>
-                    <div className="relative flex items-center justify-center gap-3 px-6 py-4 sm:py-5">
-                      <div className="p-2 bg-white/20 rounded-lg group-hover/btn:bg-white/30 transition-all">
-                        <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-                      </div>
-                      <div className="text-left">
-                        <p className="text-white font-bold text-sm sm:text-base">
-                          Tham Gia Zalo
-                        </p>
-                        <p className="text-cyan-100 text-xs">Nhóm ưu đãi hot</p>
-                      </div>
-                      <div className="ml-auto">
-                        <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center group-hover/btn:translate-x-1 transition-transform">
-                          <span className="text-white text-lg">→</span>
-                        </div>
-                      </div>
-                    </div>
-                  </a>
-                </div>
-
                 {/* Footer Note */}
-                <div className="mt-6 sm:mt-8 text-center">
-                  <div className="inline-flex items-center gap-2 text-gray-400 text-xs sm:text-sm">
-                    <Users className="w-4 h-4" />
+                <div className="mt-4 sm:mt-6 text-center">
+                  <div className="inline-flex items-center gap-1.5 sm:gap-2 text-gray-400 text-[10px] sm:text-xs">
+                    <Users className="w-3 h-3 sm:w-4 sm:h-4" />
                     <span>
-                      Đã có hơn <strong className="text-white">1,000+</strong>{" "}
-                      thành viên săn voucher thành công
+                      <span className="hidden sm:inline">Đã có hơn </span>
+                      <strong className="text-white">1,000+</strong>{" "}
+                      <span className="hidden sm:inline">thành viên săn voucher thành công</span>
+                      <span className="sm:hidden">thành viên</span>
                     </span>
                   </div>
                 </div>
@@ -698,7 +682,7 @@ function App() {
             </button>
 
             <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white mb-4 sm:mb-5 md:mb-6 pr-8 sm:pr-10">
-              Thông Tin Nhận Hoàn Tiền
+              Thông Tin Nhận Giảm Giá
             </h2>
 
             <form
@@ -808,7 +792,7 @@ function App() {
                 🎉 Đăng Ký Thành Công!
               </h2>
               <p className="text-sm sm:text-base text-green-400 font-medium">
-                Thông tin hoàn tiền đã được ghi nhận
+                Thông tin Giảm Giá đã được ghi nhận
               </p>
             </div>
 
@@ -833,7 +817,7 @@ function App() {
                       <span className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-bold">
                         2
                       </span>
-                      Quay lại JPee để nhập thông tin hoàn tiền
+                      Quay lại JPee để nhập thông tin Giảm Giá
                     </p>
                   </div>
                 </div>
