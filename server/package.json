@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "nodemon --watch './**/*.ts' --exec 'tsx app.ts'",
     "dev:build": "nodemon --watch './**/*.ts' --exec 'tsc && node dist/app.js'",
-    "start": "node dist/app.js",
+    "start": "node --max-old-space-size=256 dist/app.js",
     "build": "tsc"
   },
   "dependencies": {
