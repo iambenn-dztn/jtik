@@ -51,6 +51,26 @@ interface Statistics {
   active: number;
 }
 
+interface ConversionStats {
+  date: string;
+  totalLinks: number;
+  successfulLinks: number;
+  failedLinks: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface ConversionStatsResponse {
+  success: boolean;
+  data: ConversionStats[];
+  totals: {
+    totalLinks: number;
+    successfulLinks: number;
+    failedLinks: number;
+  };
+  count: number;
+}
+
 function AdminPage() {
   const navigate = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -95,6 +115,16 @@ function AdminPage() {
   >("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchType, setSearchType] = useState<"orderId" | "phone">("orderId");
+
+  // Conversion stats states
+  const [conversionStats, setConversionStats] = useState<ConversionStats[]>([]);
+  const [conversionTotals, setConversionTotals] = useState({
+    totalLinks: 0,
+    successfulLinks: 0,
+    failedLinks: 0,
+  });
+  const [conversionLoading, setConversionLoading] = useState(false);
+  const [showConversionStats, setShowConversionStats] = useState(false);
 
   const fetchCustomers = useCallback(async () => {
     try {
@@ -319,6 +349,28 @@ function AdminPage() {
     }
   };
 
+  // Conversion stats functions
+  const fetchConversionStats = async (days: number = 30) => {
+    setConversionLoading(true);
+    try {
+      const response = await authService.authenticatedFetch(
+        `${config.endpoints.conversionStats}?limit=${days}`,
+      );
+      const result: ConversionStatsResponse = await response.json();
+
+      if (result.success) {
+        setConversionStats(result.data);
+        setConversionTotals(result.totals);
+      } else {
+        console.error("Failed to fetch conversion stats");
+      }
+    } catch (error) {
+      console.error("Error fetching conversion stats:", error);
+    } finally {
+      setConversionLoading(false);
+    }
+  };
+
   const openAccountModal = (
     mode: "view" | "add" | "edit",
     account?: Account,
@@ -482,6 +534,22 @@ function AdminPage() {
                     <span className="hidden md:inline">Tài khoản</span>
                   </button>
                   <button
+                    onClick={() => {
+                      setShowConversionStats(!showConversionStats);
+                      if (
+                        !showConversionStats &&
+                        conversionStats.length === 0
+                      ) {
+                        fetchConversionStats(30);
+                      }
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-purple-500/30 text-purple-400 hover:bg-purple-500/10 transition-all text-sm"
+                    title="Thống kê chuyển đổi"
+                  >
+                    <TrendingUp size={16} />
+                    <span className="hidden md:inline">Thống kê</span>
+                  </button>
+                  <button
                     onClick={handleRefresh}
                     disabled={refreshing}
                     className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-blue-500/30 text-blue-400 hover:bg-blue-500/10 transition-all disabled:opacity-50 text-sm"
@@ -565,6 +633,143 @@ function AdminPage() {
                 </div>
               </div>
             </div>
+
+            {/* Conversion Stats Section */}
+            {showConversionStats && (
+              <div className="bg-black/20 backdrop-blur-sm border border-white/10 rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg sm:text-xl font-bold flex items-center gap-2">
+                    <TrendingUp size={20} className="text-purple-400" />
+                    Thống Kê Chuyển Đổi Link
+                  </h2>
+                  <button
+                    onClick={() => fetchConversionStats(30)}
+                    disabled={conversionLoading}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-purple-500/30 text-purple-400 hover:bg-purple-500/10 transition-all disabled:opacity-50 text-sm"
+                  >
+                    <RefreshCw
+                      size={14}
+                      className={conversionLoading ? "animate-spin" : ""}
+                    />
+                    Làm mới
+                  </button>
+                </div>
+
+                {/* Summary Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                  <div className="bg-gradient-to-r from-blue-500/10 to-blue-600/10 border border-blue-500/20 rounded-lg p-4">
+                    <p className="text-gray-400 text-xs mb-1">Tổng Link</p>
+                    <p className="text-2xl font-bold text-blue-400">
+                      {conversionLoading
+                        ? "..."
+                        : conversionTotals.totalLinks.toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="bg-gradient-to-r from-green-500/10 to-green-600/10 border border-green-500/20 rounded-lg p-4">
+                    <p className="text-gray-400 text-xs mb-1">Thành Công</p>
+                    <p className="text-2xl font-bold text-green-400">
+                      {conversionLoading
+                        ? "..."
+                        : conversionTotals.successfulLinks.toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="bg-gradient-to-r from-red-500/10 to-red-600/10 border border-red-500/20 rounded-lg p-4">
+                    <p className="text-gray-400 text-xs mb-1">Thất Bại</p>
+                    <p className="text-2xl font-bold text-red-400">
+                      {conversionLoading
+                        ? "..."
+                        : conversionTotals.failedLinks.toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Conversion Table */}
+                {conversionLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="animate-spin text-blue-400" size={32} />
+                  </div>
+                ) : conversionStats.length === 0 ? (
+                  <div className="text-center py-12 text-gray-400">
+                    Chưa có dữ liệu thống kê
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-white/10">
+                          <th className="text-left py-3 px-2 sm:px-4 text-gray-400 text-xs sm:text-sm">
+                            Ngày
+                          </th>
+                          <th className="text-right py-3 px-2 sm:px-4 text-gray-400 text-xs sm:text-sm">
+                            Tổng Link
+                          </th>
+                          <th className="text-right py-3 px-2 sm:px-4 text-gray-400 text-xs sm:text-sm">
+                            Thành Công
+                          </th>
+                          <th className="text-right py-3 px-2 sm:px-4 text-gray-400 text-xs sm:text-sm">
+                            Thất Bại
+                          </th>
+                          <th className="text-right py-3 px-2 sm:px-4 text-gray-400 text-xs sm:text-sm">
+                            Tỷ Lệ
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {conversionStats.map((stat) => {
+                          const successRate =
+                            stat.totalLinks > 0
+                              ? (
+                                  (stat.successfulLinks / stat.totalLinks) *
+                                  100
+                                ).toFixed(1)
+                              : "0";
+
+                          return (
+                            <tr
+                              key={stat.date}
+                              className="border-b border-white/5 hover:bg-white/5 transition-colors"
+                            >
+                              <td className="py-3 px-2 sm:px-4 text-xs sm:text-sm">
+                                {new Date(stat.date).toLocaleDateString(
+                                  "vi-VN",
+                                  {
+                                    year: "numeric",
+                                    month: "2-digit",
+                                    day: "2-digit",
+                                  },
+                                )}
+                              </td>
+                              <td className="py-3 px-2 sm:px-4 text-right text-xs sm:text-sm">
+                                {stat.totalLinks.toLocaleString()}
+                              </td>
+                              <td className="py-3 px-2 sm:px-4 text-right text-green-400 text-xs sm:text-sm">
+                                {stat.successfulLinks.toLocaleString()}
+                              </td>
+                              <td className="py-3 px-2 sm:px-4 text-right text-red-400 text-xs sm:text-sm">
+                                {stat.failedLinks.toLocaleString()}
+                              </td>
+                              <td className="py-3 px-2 sm:px-4 text-right text-xs sm:text-sm">
+                                <span
+                                  className={`font-semibold ${
+                                    parseFloat(successRate) >= 90
+                                      ? "text-green-400"
+                                      : parseFloat(successRate) >= 70
+                                        ? "text-yellow-400"
+                                        : "text-red-400"
+                                  }`}
+                                >
+                                  {successRate}%
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Filter and Search Controls */}
             <div className="bg-black/20 backdrop-blur-sm border border-white/10 rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6">

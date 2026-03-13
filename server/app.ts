@@ -5,6 +5,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { rateLimit } from "express-rate-limit";
 import { dbService } from "./services/mongodb.service.js";
+import { getLongUrl } from "./services/url-shortener.service.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -82,6 +83,33 @@ app.use("/api/shopee", shopeeRouter);
 app.use("/api/auth", authRouter);
 
 app.use("/files", express.static(path.join(__dirname)));
+
+// URL shortener redirect endpoint
+// This must be after all other routes to avoid conflicts
+app.get("/:shortCode", async (req, res) => {
+  const { shortCode } = req.params;
+
+  // Ignore common paths that shouldn't be treated as short codes
+  const ignorePaths = ["api", "files", "favicon.ico", "robots.txt"];
+  if (ignorePaths.includes(shortCode)) {
+    return res.status(404).json({ error: "Not found" });
+  }
+
+  try {
+    const longUrl = await getLongUrl(shortCode);
+
+    if (!longUrl) {
+      return res.status(404).json({ error: "Short URL not found" });
+    }
+
+    // Redirect to the long URL
+    console.log(`🔗 Redirecting ${shortCode} -> ${longUrl}`);
+    res.redirect(longUrl);
+  } catch (error: any) {
+    console.error("Error processing redirect:", error);
+    res.status(500).json({ error: "Failed to process redirect" });
+  }
+});
 
 // Add global error handler
 app.use(

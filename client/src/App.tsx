@@ -425,7 +425,10 @@ function App() {
                                     className="flex-1 sm:flex-none bg-gray-600 hover:bg-gray-500 text-white px-3 sm:px-4 py-2 rounded-lg sm:rounded-xl flex items-center gap-1.5 sm:gap-2 font-bold transition-all text-xs sm:text-sm justify-center"
                                     title="Copy link"
                                   >
-                                    <LinkIcon size={14} className="sm:w-4 sm:h-4" />
+                                    <LinkIcon
+                                      size={14}
+                                      className="sm:w-4 sm:h-4"
+                                    />
                                     Copy
                                   </button>
                                   <button
@@ -646,7 +649,9 @@ function App() {
                     <span>
                       <span className="hidden sm:inline">Đã có hơn </span>
                       <strong className="text-white">1,000+</strong>{" "}
-                      <span className="hidden sm:inline">thành viên săn voucher thành công</span>
+                      <span className="hidden sm:inline">
+                        thành viên săn voucher thành công
+                      </span>
                       <span className="sm:hidden">thành viên</span>
                     </span>
                   </div>

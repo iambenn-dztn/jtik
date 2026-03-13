@@ -9,6 +9,8 @@ export const config = {
     customers: `${API_URL}/api/shopee/customers`,
     accounts: `${API_URL}/api/shopee/accounts`,
     exportCustomers: `${API_URL}/api/shopee/customers/export`,
+    conversionStats: `${API_URL}/api/shopee/stats/conversions`,
+    conversionStatsToday: `${API_URL}/api/shopee/stats/conversions/today`,
   },
 };
 

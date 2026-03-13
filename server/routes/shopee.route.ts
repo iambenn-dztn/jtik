@@ -10,6 +10,7 @@ import {
   authenticateToken,
   requireAdmin,
 } from "../middleware/auth.middleware.js";
+import { createShortUrl } from "../services/url-shortener.service.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -233,6 +234,12 @@ router.post("/transform-link", async (req, res) => {
     );
 
     const successCount = results.filter((r) => r.shortLink).length;
+    const failedCount = results.filter((r) => !r.shortLink).length;
+
+    // Track conversion stats (don't wait for it to complete)
+    dbService
+      .trackLinkConversion(links.length, successCount, failedCount)
+      .catch((err) => console.error("Failed to track conversion stats:", err));
 
     res.json({
       success: true,
@@ -299,10 +306,11 @@ router.post("/transform-text", async (req, res) => {
       });
     }
 
-    // Transform URLs and build results using parallel processing
+    const uniqueUrls = [...new Set(foundUrls.map((url) => url.trim()))];
+
     const linkResults = await Promise.all(
-      foundUrls.map(async (url, index) => {
-        const trimmedUrl = url.trim();
+      uniqueUrls.map(async (url, index) => {
+        const trimmedUrl = url;
 
         // Check if it's a Shopee link
         if (!isShopeeLink(trimmedUrl)) {
@@ -333,9 +341,15 @@ router.post("/transform-text", async (req, res) => {
           const encoded = encodeURIComponent(normalizedUrl);
           const transformedLink = `https://s.shopee.vn/an_redir?origin_link=${encoded}&affiliate_id=${affiliateId}&sub_id=${subId}`;
 
+          // Create a shortened URL
+          const { shortUrl } = await createShortUrl(
+            transformedLink,
+            trimmedUrl,
+          );
+
           return {
             originalLink: trimmedUrl,
-            shortLink: transformedLink,
+            shortLink: shortUrl,
             error: null,
           };
         } catch (error: any) {
@@ -356,10 +370,10 @@ router.post("/transform-text", async (req, res) => {
     let transformedText = text;
     linkResults.forEach((result) => {
       if (result.shortLink && result.originalLink !== result.shortLink) {
-        transformedText = transformedText.replace(
-          result.originalLink,
-          result.shortLink,
-        );
+        // Use split/join to replace ALL occurrences (not just the first one)
+        transformedText = transformedText
+          .split(result.originalLink)
+          .join(result.shortLink);
       }
     });
 
@@ -766,5 +780,122 @@ router.delete(
     }
   },
 );
+
+// ==================== CONVERSION STATS ROUTES ====================
+
+// Get conversion stats for today
+router.get("/stats/conversions/today", authenticateToken, async (req, res) => {
+  try {
+    const today = new Date().toISOString().split("T")[0];
+    const stats = await dbService.getConversionStatsByDate(today);
+
+    if (!stats) {
+      return res.json({
+        success: true,
+        data: {
+          date: today,
+          totalLinks: 0,
+          successfulLinks: 0,
+          failedLinks: 0,
+        },
+      });
+    }
+
+    res.json({
+      success: true,
+      data: stats,
+    });
+  } catch (error) {
+    console.error("Error getting today's conversion stats:", error);
+    res.status(500).json({ error: "Failed to get conversion stats" });
+  }
+});
+
+// Get conversion stats by date
+router.get("/stats/conversions/:date", authenticateToken, async (req, res) => {
+  try {
+    const { date } = req.params;
+
+    // Validate date format (YYYY-MM-DD)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res.status(400).json({
+        error: "Invalid date format. Use YYYY-MM-DD",
+      });
+    }
+
+    const stats = await dbService.getConversionStatsByDate(date);
+
+    if (!stats) {
+      return res.json({
+        success: true,
+        data: {
+          date,
+          totalLinks: 0,
+          successfulLinks: 0,
+          failedLinks: 0,
+        },
+      });
+    }
+
+    res.json({
+      success: true,
+      data: stats,
+    });
+  } catch (error) {
+    console.error("Error getting conversion stats:", error);
+    res.status(500).json({ error: "Failed to get conversion stats" });
+  }
+});
+
+// Get conversion stats for a date range
+router.get("/stats/conversions", authenticateToken, async (req, res) => {
+  try {
+    const { startDate, endDate, limit } = req.query;
+
+    let stats;
+
+    if (startDate && endDate) {
+      // Validate date format
+      if (
+        !/^\d{4}-\d{2}-\d{2}$/.test(startDate as string) ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(endDate as string)
+      ) {
+        return res.status(400).json({
+          error: "Invalid date format. Use YYYY-MM-DD",
+        });
+      }
+
+      stats = await dbService.getConversionStatsRange(
+        startDate as string,
+        endDate as string,
+      );
+    } else {
+      // Get last N days (default 30)
+      const limitNum = limit ? parseInt(limit as string, 10) : 30;
+      stats = await dbService.getAllConversionStats(limitNum);
+    }
+
+    // Calculate totals
+    const totals = stats.reduce(
+      (acc, stat) => {
+        acc.totalLinks += stat.totalLinks;
+        acc.successfulLinks += stat.successfulLinks;
+        acc.failedLinks += stat.failedLinks;
+        return acc;
+      },
+      { totalLinks: 0, successfulLinks: 0, failedLinks: 0 },
+    );
+
+    res.json({
+      success: true,
+      data: stats,
+      totals,
+      count: stats.length,
+    });
+  } catch (error) {
+    console.error("Error getting conversion stats:", error);
+    res.status(500).json({ error: "Failed to get conversion stats" });
+  }
+});
 
 export default router;

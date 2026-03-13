@@ -44,6 +44,28 @@ export interface AdminUser {
   lastLogin?: string;
 }
 
+export interface ShortenedUrl {
+  _id?: ObjectId;
+  id: string;
+  shortCode: string; // e.g., "A0du"
+  longUrl: string; // The full affiliate link
+  originalUrl: string; // The original Shopee link before transformation
+  clicks: number;
+  createdAt: string;
+  updatedAt: string;
+  expiresAt?: string; // Optional expiration date
+}
+
+export interface LinkConversionStats {
+  _id?: ObjectId;
+  date: string; // Format: YYYY-MM-DD
+  totalLinks: number; // Total links processed
+  successfulLinks: number; // Successfully transformed links
+  failedLinks: number; // Failed transformations
+  createdAt: string;
+  updatedAt: string;
+}
+
 class MongoDBService {
   private static readonly MONGO_OPTIONS = {
     serverSelectionTimeoutMS: 30000,
@@ -62,6 +84,8 @@ class MongoDBService {
   private customers: Collection<Customer> | null = null;
   private accounts: Collection<Account> | null = null;
   private admins: Collection<AdminUser> | null = null;
+  private shortenedUrls: Collection<ShortenedUrl> | null = null;
+  private conversionStats: Collection<LinkConversionStats> | null = null;
   private connected: boolean = false;
   private reconnecting: boolean = false;
   private reconnectAttempts: number = 0;
@@ -104,6 +128,9 @@ class MongoDBService {
       this.customers = this.db.collection<Customer>("customers");
       this.accounts = this.db.collection<Account>("accounts");
       this.admins = this.db.collection<AdminUser>("admins");
+      this.shortenedUrls = this.db.collection<ShortenedUrl>("shortenedUrls");
+      this.conversionStats =
+        this.db.collection<LinkConversionStats>("conversionStats");
       this.connected = true;
 
       console.log("✅ Connected to MongoDB Atlas");
@@ -115,6 +142,13 @@ class MongoDBService {
         "📦 Collections:",
         collections.map((c) => c.name),
       );
+
+      // Create indexes on shortenedUrls collection for fast lookups and uniqueness
+      await this.shortenedUrls!.createIndex({ shortCode: 1 }, { unique: true });
+      await this.shortenedUrls!.createIndex({ longUrl: 1 }, { unique: true });
+
+      // Create index on conversionStats for date (unique per day)
+      await this.conversionStats!.createIndex({ date: 1 }, { unique: true });
 
       // Count documents
       if (collections.find((c) => c.name === "customers")) {
@@ -136,6 +170,8 @@ class MongoDBService {
         this.customers = null;
         this.accounts = null;
         this.admins = null;
+        this.shortenedUrls = null;
+        this.conversionStats = null;
         console.log("MongoDB connection closed gracefully");
       }
     } catch (error) {
@@ -215,7 +251,14 @@ class MongoDBService {
       return;
     }
 
-    if (!this.connected || !this.customers || !this.accounts || !this.admins) {
+    if (
+      !this.connected ||
+      !this.customers ||
+      !this.accounts ||
+      !this.admins ||
+      !this.shortenedUrls ||
+      !this.conversionStats
+    ) {
       console.warn("⚠️ Database not connected, attempting reconnection...");
       await this.reconnect();
       return;
@@ -628,6 +671,147 @@ class MongoDBService {
 
       return result || null;
     }, "updateAdminPassword");
+  }
+
+  async getShortenedUrlByCode(shortCode: string): Promise<ShortenedUrl | null> {
+    return this.withRetry(
+      () => this.shortenedUrls!.findOne({ shortCode }),
+      "getShortenedUrlByCode",
+    );
+  }
+
+  async getShortenedUrlByLongUrl(
+    longUrl: string,
+  ): Promise<ShortenedUrl | null> {
+    return this.withRetry(
+      () => this.shortenedUrls!.findOne({ longUrl }),
+      "getShortenedUrlByLongUrl",
+    );
+  }
+
+  async createShortenedUrl(
+    data: Omit<ShortenedUrl, "id" | "clicks" | "createdAt" | "updatedAt">,
+  ): Promise<ShortenedUrl> {
+    return this.withRetry(async () => {
+      const now = new Date().toISOString();
+      const newUrl: ShortenedUrl = {
+        id: this.generateId(),
+        ...data,
+        clicks: 0,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      try {
+        await this.shortenedUrls!.insertOne(newUrl);
+        return newUrl;
+      } catch (error: any) {
+        if (error.code === 11000) {
+          throw new Error(
+            `Duplicate short code: ${data.shortCode}. Please retry with a different code.`,
+          );
+        }
+        throw error;
+      }
+    }, "createShortenedUrl");
+  }
+
+  async incrementUrlClicks(shortCode: string): Promise<ShortenedUrl | null> {
+    return this.withRetry(async () => {
+      const result = await this.shortenedUrls!.findOneAndUpdate(
+        { shortCode },
+        {
+          $inc: { clicks: 1 },
+          $set: { updatedAt: new Date().toISOString() },
+        },
+        { returnDocument: "after" },
+      );
+
+      return result || null;
+    }, "incrementUrlClicks");
+  }
+
+  async getAllShortenedUrls(): Promise<ShortenedUrl[]> {
+    return this.withRetry(
+      () => this.shortenedUrls!.find({}).sort({ createdAt: -1 }).toArray(),
+      "getAllShortenedUrls",
+    );
+  }
+
+  async deleteShortenedUrl(shortCode: string): Promise<boolean> {
+    return this.withRetry(async () => {
+      const result = await this.shortenedUrls!.deleteOne({ shortCode });
+      return result.deletedCount > 0;
+    }, "deleteShortenedUrl");
+  }
+
+  // ==================== CONVERSION STATS METHODS ====================
+
+  async trackLinkConversion(
+    totalLinks: number,
+    successfulLinks: number,
+    failedLinks: number,
+  ): Promise<void> {
+    return this.withRetry(async () => {
+      const today = new Date().toISOString().split("T")[0]; // Format: YYYY-MM-DD
+      const now = new Date().toISOString();
+
+      // Use upsert to increment stats for today
+      await this.conversionStats!.updateOne(
+        { date: today },
+        {
+          $inc: {
+            totalLinks,
+            successfulLinks,
+            failedLinks,
+          },
+          $set: {
+            updatedAt: now,
+          },
+          $setOnInsert: {
+            createdAt: now,
+          },
+        },
+        { upsert: true },
+      );
+    }, "trackLinkConversion");
+  }
+
+  async getConversionStatsByDate(
+    date: string,
+  ): Promise<LinkConversionStats | null> {
+    return this.withRetry(
+      () => this.conversionStats!.findOne({ date }),
+      "getConversionStatsByDate",
+    );
+  }
+
+  async getConversionStatsRange(
+    startDate: string,
+    endDate: string,
+  ): Promise<LinkConversionStats[]> {
+    return this.withRetry(
+      () =>
+        this.conversionStats!.find({
+          date: { $gte: startDate, $lte: endDate },
+        })
+          .sort({ date: -1 })
+          .toArray(),
+      "getConversionStatsRange",
+    );
+  }
+
+  async getAllConversionStats(
+    limit: number = 30,
+  ): Promise<LinkConversionStats[]> {
+    return this.withRetry(
+      () =>
+        this.conversionStats!.find({})
+          .sort({ date: -1 })
+          .limit(limit)
+          .toArray(),
+      "getAllConversionStats",
+    );
   }
 }
 
