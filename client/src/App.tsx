@@ -522,13 +522,13 @@ function App() {
           </form>
 
           {/* Voucher Decoration */}
-          <div className="flex justify-center items-center my-2 sm:my-8 rounded-md">
+          <div className="flex justify-center items-center my-2 sm:my-8 rounded-xl">
             <div className="relative">
               {/* Voucher image */}
               <img
                 src="/assets/voucher-25.png"
                 alt="Voucher 25%"
-                className="w-100 sm:w-56 md:w-64 lg:w-72 object-contain drop-shadow-lg"
+                className="w-100 sm:w-56 md:w-64 lg:w-72 object-contain drop-shadow-lg rounded-xl"
               />
             </div>
           </div>
@@ -545,9 +545,6 @@ function App() {
 
             {/* Content Card */}
             <div className="relative bg-gradient-to-br from-gray-900/95 via-blue-900/95 to-purple-900/95 backdrop-blur-lg rounded-2xl sm:rounded-3xl border border-white/10 overflow-hidden">
-              {/* Top Decoration Bar */}
-              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"></div>
-
               {/* Floating Icons Background */}
               <div className="absolute inset-0 overflow-hidden opacity-10">
                 <div
