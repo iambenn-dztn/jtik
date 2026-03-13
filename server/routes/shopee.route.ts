@@ -19,7 +19,6 @@ const writeCookiesToFile = (cookies: string) => {
   try {
     const cookiePath = path.join(__dirname, "../cookie.txt");
     fs.writeFileSync(cookiePath, cookies, "utf8");
-    console.log("Cookies written to file successfully");
   } catch (error) {
     console.error("Error writing cookie file:", error);
   }
@@ -43,7 +42,6 @@ const expandShopeeUrl = async (url: string): Promise<string> => {
 
     // Get the final URL after all redirects
     const finalUrl = response.request.res.responseUrl || url;
-    console.log(`🔄 Expanded ${url} -> ${finalUrl}`);
     return finalUrl;
   } catch (error: any) {
     console.error(`❌ Error expanding URL ${url}:`, error.message);
@@ -84,7 +82,6 @@ const normalizeShopeeUrl = (url: string): string | null => {
       if (campaignPaths.includes(firstPart)) {
         // This is a campaign/special page, return as-is
         const cleanUrl = `https://shopee.vn${pathname}`;
-        console.log(`📋 Campaign/Special page detected: ${cleanUrl}`);
         return cleanUrl;
       }
     }
@@ -108,9 +105,6 @@ const normalizeShopeeUrl = (url: string): string | null => {
     }
 
     // If no specific format matched, return the clean shopee.vn URL
-    console.log(
-      `⚠️ Could not match specific format, returning clean URL: ${url}`,
-    );
     return `https://shopee.vn${pathname}`;
   } catch (error) {
     console.error(`❌ Error parsing URL ${url}:`, error);
@@ -145,9 +139,6 @@ router.post("/admin/auth", (req, res) => {
 });
 
 router.post("/transform-link", async (req, res) => {
-  console.log("=".repeat(50));
-  console.log("📥 Received transform-link request");
-
   const { links } = req.body; // Now expecting an array of links
 
   if (!links || !Array.isArray(links) || links.length === 0) {
@@ -155,8 +146,6 @@ router.post("/transform-link", async (req, res) => {
       error: "Links array is required and must not be empty",
     });
   }
-
-  console.log(`🔗 Processing ${links.length} link(s)`);
 
   try {
     // Get active account to retrieve affiliateId
@@ -170,10 +159,6 @@ router.post("/transform-link", async (req, res) => {
 
     const affiliateId = activeAccount.affiliateId;
     const subId = "justj";
-
-    console.log(
-      `🆔 Using Affiliate ID: ${affiliateId} from account: ${activeAccount.username}`,
-    );
 
     // Helper function to validate Shopee links
     const isShopeeLink = (url: string): boolean => {
@@ -190,7 +175,6 @@ router.post("/transform-link", async (req, res) => {
     const results = await Promise.all(
       links.map(async (link, index) => {
         if (!link || !link.trim()) {
-          console.log(`⚠️ Skipping empty link at index ${index}`);
           return {
             originalLink: link,
             shortLink: null,
@@ -202,9 +186,6 @@ router.post("/transform-link", async (req, res) => {
 
         // Validate if it's a Shopee link
         if (!isShopeeLink(trimmedLink)) {
-          console.log(
-            `❌ Invalid Shopee link at index ${index}: ${trimmedLink}`,
-          );
           return {
             originalLink: trimmedLink,
             shortLink: null,
@@ -215,16 +196,12 @@ router.post("/transform-link", async (req, res) => {
 
         try {
           // Always expand URL to get the final redirect destination
-          console.log(`🔄 Expanding link: ${trimmedLink}`);
           const expandedUrl = await expandShopeeUrl(trimmedLink);
 
           // Normalize the URL to extract shop_id and item_id
           const normalizedUrl = normalizeShopeeUrl(expandedUrl);
 
           if (!normalizedUrl) {
-            console.log(
-              `❌ Could not normalize link at index ${index}: ${trimmedLink}`,
-            );
             return {
               originalLink: trimmedLink,
               shortLink: null,
@@ -232,15 +209,9 @@ router.post("/transform-link", async (req, res) => {
             };
           }
 
-          console.log(`✅ Normalized URL: ${normalizedUrl}`);
-
           // Encode the normalized URL
           const encoded = encodeURIComponent(normalizedUrl);
           const transformedLink = `https://s.shopee.vn/an_redir?origin_link=${encoded}&affiliate_id=${affiliateId}&sub_id=${subId}`;
-
-          console.log(
-            `✅ Transformed link ${index + 1}: ${trimmedLink.substring(0, 50)}...`,
-          );
 
           return {
             originalLink: trimmedLink,
@@ -262,10 +233,6 @@ router.post("/transform-link", async (req, res) => {
     );
 
     const successCount = results.filter((r) => r.shortLink).length;
-    console.log(
-      `✅ Successfully transformed ${successCount}/${links.length} links`,
-    );
-    console.log("=".repeat(50));
 
     res.json({
       success: true,
@@ -275,7 +242,6 @@ router.post("/transform-link", async (req, res) => {
     });
   } catch (error: any) {
     console.error("❌ Error transforming links:", error);
-    console.log("=".repeat(50));
 
     res.status(500).json({
       success: false,
@@ -286,9 +252,6 @@ router.post("/transform-link", async (req, res) => {
 });
 
 router.post("/transform-text", async (req, res) => {
-  console.log("=".repeat(50));
-  console.log("📥 Received transform-text request");
-
   const { text } = req.body;
 
   if (!text || typeof text !== "string" || text.trim().length === 0) {
@@ -296,8 +259,6 @@ router.post("/transform-text", async (req, res) => {
       error: "Text is required and must not be empty",
     });
   }
-
-  console.log(`📝 Processing text (${text.length} characters)`);
 
   try {
     // Get active account to retrieve affiliateId
@@ -311,10 +272,6 @@ router.post("/transform-text", async (req, res) => {
 
     const affiliateId = activeAccount.affiliateId;
     const subId = "justj";
-
-    console.log(
-      `🆔 Using Affiliate ID: ${affiliateId} from account: ${activeAccount.username}`,
-    );
 
     // Helper function to validate Shopee links
     const isShopeeLink = (url: string): boolean => {
@@ -330,8 +287,6 @@ router.post("/transform-text", async (req, res) => {
     // Extract all URLs from text
     const urlRegex = /(https?:\/\/[^\s]+)/gi;
     const foundUrls = text.match(urlRegex) || [];
-
-    console.log(`🔗 Found ${foundUrls.length} URL(s) in text`);
 
     if (foundUrls.length === 0) {
       return res.json({
@@ -351,9 +306,6 @@ router.post("/transform-text", async (req, res) => {
 
         // Check if it's a Shopee link
         if (!isShopeeLink(trimmedUrl)) {
-          console.log(
-            `⚠️ Skipping non-Shopee link ${index + 1}: ${trimmedUrl}`,
-          );
           // Keep original URL in text if it's not a Shopee link
           return {
             originalLink: trimmedUrl,
@@ -364,16 +316,12 @@ router.post("/transform-text", async (req, res) => {
 
         try {
           // Always expand URL to get the final redirect destination
-          console.log(`🔄 Expanding link: ${trimmedUrl}`);
           const expandedUrl = await expandShopeeUrl(trimmedUrl);
 
           // Normalize the URL to extract shop_id and item_id
           const normalizedUrl = normalizeShopeeUrl(expandedUrl);
 
           if (!normalizedUrl) {
-            console.log(
-              `❌ Could not normalize link ${index + 1}: ${trimmedUrl}`,
-            );
             return {
               originalLink: trimmedUrl,
               shortLink: trimmedUrl,
@@ -381,15 +329,9 @@ router.post("/transform-text", async (req, res) => {
             };
           }
 
-          console.log(`✅ Normalized URL: ${normalizedUrl}`);
-
           // Encode the normalized URL
           const encoded = encodeURIComponent(normalizedUrl);
           const transformedLink = `https://s.shopee.vn/an_redir?origin_link=${encoded}&affiliate_id=${affiliateId}&sub_id=${subId}`;
-
-          console.log(
-            `✅ Transformed link ${index + 1}: ${trimmedUrl.substring(0, 50)}...`,
-          );
 
           return {
             originalLink: trimmedUrl,
@@ -424,10 +366,6 @@ router.post("/transform-text", async (req, res) => {
     const successCount = linkResults.filter(
       (r) => r.shortLink && !r.error,
     ).length;
-    console.log(
-      `✅ Successfully transformed ${successCount}/${linkResults.length} URL(s)`,
-    );
-    console.log("=".repeat(50));
 
     res.json({
       success: true,
@@ -440,7 +378,6 @@ router.post("/transform-text", async (req, res) => {
     });
   } catch (error: any) {
     console.error("❌ Error transforming text:", error);
-    console.log("=".repeat(50));
 
     res.status(500).json({
       success: false,
