@@ -522,13 +522,13 @@ function App() {
           </form>
 
           {/* Voucher Decoration */}
-          <div className="flex justify-center items-center my-2 sm:my-8 rounded-xl">
-            <div className="relative">
+          <div className="flex justify-center items-center my-3 sm:my-6 md:my-8 lg:my-10">
+            <div className="relative w-full">
               {/* Voucher image */}
               <img
                 src="/assets/voucher-25.png"
                 alt="Voucher 25%"
-                className="w-100 sm:w-56 md:w-64 lg:w-72 object-contain drop-shadow-lg rounded-xl"
+                className="w-full h-auto object-contain drop-shadow-2xl rounded-xl sm:rounded-2xl transition-transform duration-300 hover:scale-[1.02]"
               />
             </div>
           </div>
