@@ -11,6 +11,7 @@ import {
   requireAdmin,
 } from "../middleware/auth.middleware.js";
 import { createShortUrl } from "../services/url-shortener.service.js";
+import { getShopeeAffiliateLink } from "../utils/trace-redirect-link.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -314,12 +315,39 @@ router.post("/transform-text", async (req, res) => {
 
         // Check if it's a Shopee link
         if (!isShopeeLink(trimmedUrl)) {
-          // Keep original URL in text if it's not a Shopee link
-          return {
-            originalLink: trimmedUrl,
-            shortLink: trimmedUrl,
-            error: "Not a Shopee link",
-          };
+          try {
+            const affiliateLink = await getShopeeAffiliateLink(
+              trimmedUrl,
+              affiliateId,
+              subId,
+            );
+
+            if (affiliateLink) {
+              const { shortUrl } = await createShortUrl(
+                affiliateLink,
+                trimmedUrl,
+              );
+
+              return {
+                originalLink: trimmedUrl,
+                shortLink: shortUrl,
+                error: null,
+              };
+            } else {
+              console.log(`⚠️ Could not trace to Shopee link: ${trimmedUrl}`);
+              return {
+                originalLink: trimmedUrl,
+                shortLink: trimmedUrl,
+                error: "Could not trace to Shopee link",
+              };
+            }
+          } catch (error: any) {
+            return {
+              originalLink: trimmedUrl,
+              shortLink: trimmedUrl,
+              error: error.message || "Failed to trace link",
+            };
+          }
         }
 
         try {
