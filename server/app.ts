@@ -32,6 +32,8 @@ try {
 const app = express();
 const PORT = parseInt(process.env.PORT || "3001", 10);
 
+app.set("trust proxy", 1);
+
 // Rate limiting configurations
 // General API rate limiter - 100 requests per 15 minutes
 const apiLimiter = rateLimit({
