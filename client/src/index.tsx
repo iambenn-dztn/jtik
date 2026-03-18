@@ -5,6 +5,7 @@ import App from "./App";
 import AdminPage from "./components/AdminPage";
 import LoginPage from "./components/LoginPage";
 import TextTransformPage from "./components/TextTransformPage";
+import ShortLinkRedirect from "./components/ShortLinkRedirect";
 import * as authService from "./services/authService";
 
 function AppRoot() {
@@ -30,6 +31,7 @@ function AppRoot() {
           element={<LoginPage onLoginSuccess={handleLoginSuccess} />}
         />
         <Route path="/admin" element={<AdminPage />} />
+        <Route path="/:code" element={<ShortLinkRedirect />} />
       </Routes>
     </Router>
   );
