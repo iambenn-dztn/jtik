@@ -5,6 +5,7 @@ const JWT_SECRET =
   process.env.JWT_SECRET || "your-secret-key-change-in-production";
 const JWT_REFRESH_SECRET =
   process.env.JWT_REFRESH_SECRET || "your-refresh-secret-key";
+const API_KEY = process.env.API_KEY || "default-api-key-change-in-production";
 
 export interface AuthRequest extends Request {
   user?: {
@@ -19,7 +20,7 @@ export interface AuthRequest extends Request {
 export const authenticateToken = (
   req: AuthRequest,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     const authHeader = req.headers["authorization"];
@@ -52,7 +53,7 @@ export const authenticateToken = (
 export const requireAdmin = (
   req: AuthRequest,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   if (!req.user) {
     return res.status(401).json({ error: "Authentication required" });
@@ -79,7 +80,7 @@ export const generateAccessToken = (username: string, role: string): string => {
  */
 export const generateRefreshToken = (
   username: string,
-  role: string
+  role: string,
 ): string => {
   return jwt.sign({ username, role }, JWT_REFRESH_SECRET, {
     expiresIn: "7d", // 7 days
@@ -90,7 +91,7 @@ export const generateRefreshToken = (
  * Verify refresh token
  */
 export const verifyRefreshToken = (
-  token: string
+  token: string,
 ): { username: string; role: string } | null => {
   try {
     const decoded = jwt.verify(token, JWT_REFRESH_SECRET) as {
@@ -100,5 +101,41 @@ export const verifyRefreshToken = (
     return decoded;
   } catch (error) {
     return null;
+  }
+};
+
+/**
+ * Middleware to verify API key
+ */
+export const authenticateApiKey = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const apiKey = req.headers["x-api-key"] || req.query.apiKey;
+
+    if (!apiKey) {
+      return res.status(401).json({
+        success: false,
+        error:
+          "API key required. Provide via 'x-api-key' header or 'apiKey' query parameter",
+      });
+    }
+
+    if (apiKey !== API_KEY) {
+      return res.status(403).json({
+        success: false,
+        error: "Invalid API key",
+      });
+    }
+
+    next();
+  } catch (error) {
+    console.error("API key authentication error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Authentication failed",
+    });
   }
 };

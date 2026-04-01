@@ -18,12 +18,16 @@ await dbService.connect();
 // Add error handling for imports
 let shopeeRouter;
 let authRouter;
+let crawlRouter;
 try {
   const shopeeModule = await import("./routes/shopee.route.js");
   shopeeRouter = shopeeModule.default;
 
   const authModule = await import("./routes/auth.route.js");
   authRouter = authModule.default;
+
+  const crawlModule = await import("./routes/crawl.route.js");
+  crawlRouter = crawlModule.default;
 } catch (error) {
   console.error("Error importing routers:", error);
   process.exit(1);
@@ -83,6 +87,7 @@ app.use("/api/shopee/transform-link", transformLimiter);
 // Mount routers
 app.use("/api/shopee", shopeeRouter);
 app.use("/api/auth", authRouter);
+app.use("/api/crawl", crawlRouter);
 
 app.use("/files", express.static(path.join(__dirname)));
 

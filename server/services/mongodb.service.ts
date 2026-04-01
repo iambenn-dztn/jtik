@@ -66,6 +66,15 @@ export interface LinkConversionStats {
   updatedAt: string;
 }
 
+export interface CrawlData {
+  _id?: ObjectId;
+  id: string;
+  name: string;
+  metadata: Record<string, any>; // JSON object
+  createdAt: string;
+  updatedAt: string;
+}
+
 class MongoDBService {
   private static readonly MONGO_OPTIONS = {
     serverSelectionTimeoutMS: 30000,
@@ -86,6 +95,7 @@ class MongoDBService {
   private admins: Collection<AdminUser> | null = null;
   private shortenedUrls: Collection<ShortenedUrl> | null = null;
   private conversionStats: Collection<LinkConversionStats> | null = null;
+  private crawlData: Collection<CrawlData> | null = null;
   private connected: boolean = false;
   private reconnecting: boolean = false;
   private reconnectAttempts: number = 0;
@@ -131,6 +141,7 @@ class MongoDBService {
       this.shortenedUrls = this.db.collection<ShortenedUrl>("shortenedUrls");
       this.conversionStats =
         this.db.collection<LinkConversionStats>("conversionStats");
+      this.crawlData = this.db.collection<CrawlData>("crawlData");
       this.connected = true;
 
       console.log("✅ Connected to MongoDB Atlas");
@@ -149,6 +160,9 @@ class MongoDBService {
 
       // Create index on conversionStats for date (unique per day)
       await this.conversionStats!.createIndex({ date: 1 }, { unique: true });
+
+      // Create index on crawlData for name (unique)
+      await this.crawlData!.createIndex({ name: 1 }, { unique: true });
 
       // Count documents
       if (collections.find((c) => c.name === "customers")) {
@@ -172,6 +186,7 @@ class MongoDBService {
         this.admins = null;
         this.shortenedUrls = null;
         this.conversionStats = null;
+        this.crawlData = null;
         console.log("MongoDB connection closed gracefully");
       }
     } catch (error) {
@@ -257,7 +272,8 @@ class MongoDBService {
       !this.accounts ||
       !this.admins ||
       !this.shortenedUrls ||
-      !this.conversionStats
+      !this.conversionStats ||
+      !this.crawlData
     ) {
       console.warn("⚠️ Database not connected, attempting reconnection...");
       await this.reconnect();
@@ -812,6 +828,46 @@ class MongoDBService {
           .toArray(),
       "getAllConversionStats",
     );
+  }
+
+  // ==================== CRAWL DATA METHODS ====================
+
+  async upsertCrawlData(
+    data: Omit<CrawlData, "id" | "createdAt" | "updatedAt">,
+  ): Promise<{ data: CrawlData; created: boolean }> {
+    return this.withRetry(async () => {
+      const now = new Date().toISOString();
+
+      // Try to find existing record by name
+      const existing = await this.crawlData!.findOne({ name: data.name });
+
+      if (existing) {
+        // Update existing record
+        const result = await this.crawlData!.findOneAndUpdate(
+          { name: data.name },
+          {
+            $set: {
+              metadata: data.metadata,
+              updatedAt: now,
+            },
+          },
+          { returnDocument: "after" },
+        );
+
+        return { data: result!, created: false };
+      } else {
+        // Insert new record
+        const newData: CrawlData = {
+          id: this.generateId(),
+          ...data,
+          createdAt: now,
+          updatedAt: now,
+        };
+
+        await this.crawlData!.insertOne(newData);
+        return { data: newData, created: true };
+      }
+    }, "upsertCrawlData");
   }
 }
 
