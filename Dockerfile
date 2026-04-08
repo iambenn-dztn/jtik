@@ -10,9 +10,6 @@ COPY client/package*.json ./client/
 WORKDIR /app/server
 RUN npm install
 
-# Install Playwright with all dependencies
-RUN npx playwright install --with-deps chromium
-
 # Install client dependencies
 WORKDIR /app/client
 RUN npm install

@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "nodemon --watch './**/*.ts' --exec 'tsx app.ts'",
     "dev:build": "nodemon --watch './**/*.ts' --exec 'tsc && node dist/app.js'",
-    "start": "node --max-old-space-size=256 dist/app.js",
+    "start": "node --max-old-space-size=480 dist/app.js",
     "build": "tsc"
   },
   "dependencies": {
@@ -21,7 +21,6 @@
     "express-rate-limit": "^8.3.1",
     "jsonwebtoken": "^9.0.3",
     "mongodb": "^6.10.0",
-    "playwright": "^1.57.0",
     "typescript": "~5.8.2",
     "uuid": "^13.0.0",
     "xlsx": "^0.18.5"
