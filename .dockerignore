@@ -1,0 +1,51 @@
+# Node modules
+node_modules
+client/node_modules
+server/node_modules
+
+# Build outputs
+dist
+dist-ssr
+client/dist
+server/dist
+
+# Environment files
+.env
+.env.local
+.env.render
+client/.env
+client/.env.local
+server/.env
+server/.env.local
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+server.log
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+.DS_Store
+
+# Database files
+customer.json
+account.json
+*.json.backup
+
+# Documentation
+README.md
+AUTH_IMPLEMENTATION.md
+server/AUTH_SETUP.md
+server/scripts/README.md
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
