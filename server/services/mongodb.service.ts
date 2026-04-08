@@ -82,8 +82,8 @@ class MongoDBService {
     connectTimeoutMS: 30000,
     retryWrites: true,
     retryReads: true,
-    maxPoolSize: 10,
-    minPoolSize: 2,
+    maxPoolSize: 5,
+    minPoolSize: 1,
     tls: true,
     tlsAllowInvalidCertificates: false,
   };

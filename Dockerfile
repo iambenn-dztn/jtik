@@ -31,4 +31,4 @@ WORKDIR /app/server
 EXPOSE 10000
 
 # Run node directly (not via npm) so SIGTERM is handled correctly
-CMD ["node", "--max-old-space-size=480", "dist/app.js"]
+CMD ["node", "--max-old-space-size=256", "dist/app.js"]
