@@ -1,4 +1,4 @@
-FROM node:18
+FROM node:18-slim
 
 WORKDIR /app
 
@@ -6,9 +6,9 @@ WORKDIR /app
 COPY server/package*.json ./server/
 COPY client/package*.json ./client/
 
-# Install server dependencies
+# Install server dependencies (production only)
 WORKDIR /app/server
-RUN npm install
+RUN npm install --omit=dev
 
 # Install client dependencies
 WORKDIR /app/client
@@ -22,12 +22,13 @@ COPY . .
 WORKDIR /app/client
 RUN npm run build
 
-# Build server
+# Build server (need typescript for build)
 WORKDIR /app/server
-RUN npm run build
+RUN npm install typescript && npm run build && npm remove typescript
 
 WORKDIR /app/server
 
 EXPOSE 10000
 
-CMD ["npm", "start"]
+# Run node directly (not via npm) so SIGTERM is handled correctly
+CMD ["node", "--max-old-space-size=480", "dist/app.js"]
