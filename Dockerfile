@@ -1,32 +1,26 @@
-FROM node:18-slim
+FROM node:18-slim AS builder
 
-WORKDIR /app
-
-# Copy package files
-COPY server/package*.json ./server/
-COPY client/package*.json ./client/
-
-# Install server dependencies (production only)
 WORKDIR /app/server
-RUN npm install --omit=dev
 
-# Install client dependencies
-WORKDIR /app/client
+# Copy package files and install all deps (including typescript for build)
+COPY server/package*.json ./
 RUN npm install
 
-# Copy source code
-WORKDIR /app
-COPY . .
-
-# Build client
-WORKDIR /app/client
+# Copy server source and build
+COPY server/ ./
 RUN npm run build
 
-# Build server (need typescript for build)
-WORKDIR /app/server
-RUN npm install typescript && npm run build && npm remove typescript
+# --- Production stage ---
+FROM node:18-slim
 
 WORKDIR /app/server
+
+# Copy package files and install production deps only
+COPY server/package*.json ./
+RUN npm install --omit=dev && npm cache clean --force
+
+# Copy built output from builder
+COPY --from=builder /app/server/dist ./dist
 
 EXPOSE 10000
 

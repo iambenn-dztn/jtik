@@ -4,7 +4,6 @@ import * as fs from "fs";
 import * as path from "path";
 import { dirname } from "path";
 import { fileURLToPath } from "url";
-import XLSX from "xlsx";
 import { Customer, dbService } from "../services/mongodb.service.js";
 import {
   authenticateToken,
@@ -532,6 +531,9 @@ router.get(
   async (req, res) => {
     try {
       const customers = await dbService.getAllCustomers();
+
+      // Lazy load xlsx to reduce startup memory
+      const XLSX = (await import("xlsx")).default;
 
       // Create Excel workbook
       const workbook = XLSX.utils.book_new();
