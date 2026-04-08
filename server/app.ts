@@ -149,12 +149,15 @@ process.on("SIGINT", async () => {
 });
 
 process.on("SIGTERM", async () => {
-  console.log("Shutting down gracefully...");
-  await dbService.disconnect();
-  process.exit(0);
+  console.log("Received SIGTERM, shutting down gracefully...");
+  // Give in-flight requests a chance to complete
+  setTimeout(async () => {
+    await dbService.disconnect();
+    process.exit(0);
+  }, 5000);
 });
 
-app.listen(PORT, "0.0.0.0", () => {
+const server = app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
   console.log(`📡 API endpoint: http://localhost:${PORT}/api`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || "development"}`);
@@ -162,3 +165,7 @@ app.listen(PORT, "0.0.0.0", () => {
     `🔗 CORS Origin: ${process.env.CLIENT_URL || "http://localhost:5173"}`,
   );
 });
+
+// Keep-alive: prevent idle timeout on Render free tier
+server.keepAliveTimeout = 65000;
+server.headersTimeout = 66000;
